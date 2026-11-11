@@ -1,0 +1,76 @@
+services:
+  office-ingress:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${OFFICE_CONVERTER_PORT:-13000}:8080"
+    networks:
+      - ingress
+      - conversion
+    environment:
+      NGINX_ENTRYPOINT_QUIET_LOGS: "1"
+      NGINX_ENTRYPOINT_WORKER_PROCESSES_AUTOTUNE: "1"
+    volumes:
+      - ./ingress.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      office-converter:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    logging:
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  office-converter:
+    image: gotenberg/gotenberg:9.2.0-libreoffice
+    restart: unless-stopped
+    init: true
+    networks:
+      - conversion
+    environment:
+      API_ENABLE_BASIC_AUTH: "true"
+      GOTENBERG_API_BASIC_AUTH_USERNAME: print-hub
+      GOTENBERG_API_BASIC_AUTH_PASSWORD: "${OFFICE_CONVERTER_PASSWORD:?Set OFFICE_CONVERTER_PASSWORD in the server .env file}"
+      API_TIMEOUT: 90s
+      API_BODY_LIMIT: 26214656B
+      API_ENABLE_DEBUG_ROUTE: "false"
+      API_DISABLE_DOWNLOAD_FROM: "true"
+      WEBHOOK_DISABLE: "true"
+      PDF_DISABLE_ROUTES: "true"
+      PDF_DENY_PRIVATE_IPS: "true"
+      PDF_DENY_PUBLIC_IPS: "true"
+      LIBREOFFICE_AUTO_START: "true"
+      LIBREOFFICE_ENABLE_MACROS: "false"
+      LIBREOFFICE_DENY_PRIVATE_IPS: "true"
+      LIBREOFFICE_DENY_PUBLIC_IPS: "true"
+      LIBREOFFICE_MAX_QUEUE_SIZE: "4"
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+      - /home/gotenberg:size=128m,uid=1001,gid=1001,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    cpus: 2.0
+    pids_limit: 128
+    logging:
+      driver: none
+    healthcheck:
+      test: [CMD, curl, -fsS, -o, /dev/null, 'http://127.0.0.1:3000/health']
+      interval: 5s
+      timeout: 2s
+      start_period: 20s
+      retries: 4
+
+networks:
+  ingress:
+  conversion:
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated

@@ -1,0 +1,48 @@
+{
+  "system": {
+    "title": "企业智能文印管理中心",
+    "default_printer_id": "canon_c3130l_27f"
+  },
+  "printers": [
+    {
+      "id": "canon_c3130l_27f",
+      "name": "佳能 C3130L 总部复合机",
+      "location": "27F 总部",
+      "ip": "10.1.16.228",
+      "gateway": "10.1.16.254",
+      "ipp_port": 631,
+      "raw_port": 9100,
+      "web_port": 80,
+      "remote_ui_port": 8000,
+      "ipp_path": "/ipp/print",
+      "model": "Canon imageRUNNER C3130L",
+      "series": "Canon imageRUNNER C 系列",
+      "color_supported": true,
+      "duplex_supported": true,
+      "official_driver_url": "https://www.canon.com.cn/supports/download/sims/list/slist?fileTypeId=23&categoryId=11&seriesId=57&modelId=2004&OSName=Windows%2011&channel=8"
+    },
+    {
+      "ip": "10.1.2.206",
+      "ipp_port": 631,
+      "ipp_path": "/ipp/print",
+      "id": "printer_796e90e5ffc74775944350471c25b9d8",
+      "name": "NPIC9D84C",
+      "location": "28楼工作区",
+      "model": "HP LaserJet MFP M227-M231",
+      "color_supported": false,
+      "duplex_supported": true,
+      "default_duplex": "duplex_long"
+    }
+  ],
+  "server": {
+    "web_ui_port": 18828,
+    "auto_refresh_sec": 3,
+    "allow_lan_access": true
+  },
+  "queue": {
+    "default_priority": 50,
+    "max_priority": 100,
+    "min_priority": 1,
+    "retention_history_count": 50
+  }
+}

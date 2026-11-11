@@ -1,0 +1,28 @@
+{
+  "manifest_version": "1.0",
+  "name": "enterprise-printer-hub",
+  "display_name": "企业智能文印中心 (多打印机集群与免驱调度)",
+  "version": "0.2.2",
+  "author": "Antigravity",
+  "description": "全公司多设备打印机智能管理与调度中心。支持企业多打印机集群大盘、设备健康监控、实时谁在打印人识别、智能任务优先级插队、全员对话式免驱动直打及手机端局域网扫码直连打印。后续可随时无缝追加新打印机。",
+  "tags": [
+    "printer",
+    "enterprise-print",
+    "printer-hub",
+    "queue",
+    "priority",
+    "driverless",
+    "mobile-print",
+    "multi-printer"
+  ],
+  "entrypoint": "scripts/cli.py",
+  "dependencies": {
+    "python": ">=3.9",
+    "pip_packages": [
+      "pypdf>=3.0.0",
+      "Pillow>=9.0.0",
+      "pywin32>=306; sys_platform == \"win32\"",
+      "PyMuPDF>=1.24.0"
+    ]
+  }
+}

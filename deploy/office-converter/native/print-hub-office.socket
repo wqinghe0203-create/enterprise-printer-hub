@@ -1,0 +1,11 @@
+[Unit]
+Description=Print Hub Office conversion socket
+
+[Socket]
+ListenStream=/run/print-hub-office.sock
+SocketUser=root
+SocketGroup=nginx
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target

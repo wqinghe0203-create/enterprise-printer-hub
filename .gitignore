@@ -1,0 +1,26 @@
+# Python 虚拟环境（可由 requirements.txt 重建）
+.venv/
+
+# 运行时数据：上传的文档、转换产物、队列状态
+data/
+
+# 运行时垃圾
+config.json.bak
+config.json.lock
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local UI verification artifacts
+.cache/
+
+# Generated skill import packages and checksums
+dist/
+
+# Local Office converter dependencies and credentials
+/deploy/office-converter/native/wheelhouse/
+/deploy/office-converter/.env
+/deploy/office-converter/native/.env

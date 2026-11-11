@@ -1,0 +1,24 @@
+[Unit]
+Description=Print Hub native LibreOffice conversion
+Requires=print-hub-office.socket
+After=print-hub-office.socket
+
+[Service]
+User=print-hub-office
+Group=print-hub-office
+WorkingDirectory=/opt/print-hub-office
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=-/etc/print-hub-office/office.env
+ExecStart=/opt/print-hub-office/.venv/bin/gunicorn --workers 1 --threads 2 --timeout 100 app:app
+Restart=on-failure
+UMask=0077
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_UNIX
+NoNewPrivileges=true
+MemoryMax=1G
+TasksMax=64
+LimitFSIZE=110M
