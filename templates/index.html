@@ -24,7 +24,7 @@
     .node-info-bar { font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:14px; flex-wrap:wrap; } .node-info-bar a { text-decoration:none; } .node-info-bar strong { color:#4f607a; font-weight:500; }
     .page-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; } h1 { font-size:27px; letter-spacing:-1px; font-weight:650; line-height:1.4; } .page-description { color:var(--text-muted); font-size:12px; margin-top:5px; } .live-indicator { color:#5b6e81; display:flex; gap:7px; align-items:center; font-size:11px; } .live-dot { width:6px; height:6px; border-radius:50%; background:#299b79; }
     .section-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; } .section-heading h2 { font-size:14px; font-weight:600; } .section-heading span { font-size:11px; color:var(--text-muted); }
-    .badge,.status-badge,.prio-pill,.source-tag,.user-badge { display:inline-flex; align-items:center; gap:5px; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:500; white-space:nowrap; } .badge-online,.status-success { color:#1e785a; background:#eaf6ef; } .badge-offline,.badge-danger,.status-danger,.prio-100 { color:#b53e49; background:#fceef0; } .pulse-dot,.status-dot { height:5px; width:5px; border-radius:50%; background:currentColor; } .badge-offline .pulse-dot,.badge-danger .pulse-dot,.status-danger .status-dot { background:var(--danger); } .badge-warning,.status-warning { color:#b25e09; background:#fff4df; } .badge-warning .pulse-dot,.status-warning .status-dot { background:#b25e09; } .status-info,.prio-50,.source-agent { color:#3262bc; background:#edf3ff; } .status-muted,.source-hw { color:#728096; background:#f0f3f6; } .prio-80 { color:#996c24; background:#fff4df; } .user-badge { color:#5d6c80; background:#f3f5f8; }
+    .badge,.status-badge,.prio-pill,.source-tag,.user-badge { display:inline-flex; align-items:center; gap:5px; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:500; white-space:nowrap; } .badge-online,.status-success { color:#1e785a; background:#eaf6ef; } .badge-offline,.status-danger,.prio-100 { color:#b53e49; background:#fceef0; } .pulse-dot,.status-dot { height:5px; width:5px; border-radius:50%; background:currentColor; } .badge-offline .pulse-dot { background:var(--danger); } .status-info,.prio-50,.source-agent { color:#3262bc; background:#edf3ff; } .status-muted,.source-hw { color:#728096; background:#f0f3f6; } .prio-80 { color:#996c24; background:#fff4df; } .user-badge { color:#5d6c80; background:#f3f5f8; }
     .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:36px; padding:7px 12px; border-radius:7px; border:1px solid transparent; font-size:12px; font-weight:500; cursor:pointer; text-decoration:none; white-space:nowrap; transition:background .18s,box-shadow .18s; } .btn-outline { color:#536179; border-color:#e0e5ed; background:white; box-shadow:0 1px 2px #182b4505; } .btn-outline:hover { background:#f1f5fb; border-color:#becbe0; } .btn-primary { background:var(--primary); color:#fff; box-shadow:0 3px 7px #2864ec22; } .btn-primary:hover { background:var(--primary-hover); } .btn-danger { color:#b94650; background:#fff5f5; border-color:#f3dce0; } .btn-danger:hover { background:#fce6e8; } .btn-urgent { color:#996b22; background:#fff7e9; border-color:#f1e3c8; } .btn-urgent:hover { background:#ffedce; } .btn-sm { min-height:30px; padding:4px 8px; font-size:11px; } .btn:disabled { opacity:.55; cursor:wait; }
     .grid { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start; } .grid>div { min-width:0; } .card { background:#fff; border:1px solid var(--card-border); border-radius:12px; padding:20px; margin-bottom:20px; } .card-title { font-size:14px; font-weight:600; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:18px; } .card-title>span:last-child:not(:first-child) { font-size:10px!important; } .card-subtitle { color:var(--text-muted); font-size:11px; margin-top:-10px; margin-bottom:18px; line-height:1.8; }
     .active-banner { display:flex; gap:12px; align-items:center; padding:16px; border-radius:9px; background:#f5f8ff; border:1px solid #e5edfc; } .user-avatar { width:40px; height:40px; border-radius:12px; background:#e0eaff; color:#3767c4; display:grid; place-items:center; flex-shrink:0; font-weight:600; } .active-info { flex:1; min-width:0; } .active-doc { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:5px; } .active-sub { display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); font-size:11px; }
@@ -429,10 +429,10 @@
           <span>新建打印任务</span>
         </div>
         <div class="upload-target">打印至：<strong id="upload-target-name">待选择设备</strong><span id="upload-target-default" class="badge status-info" hidden>默认</span><button type="button" class="btn btn-outline btn-sm" onclick="focusPrinterSelector()">切换</button></div>
-        <p class="field-help">Word 和 Excel 文件优先由内网微服务转换，未配置时自动使用本机 Office 兜底。</p>
         <div id="office-progress" class="office-progress" role="status" hidden>
           <strong id="office-stage"></strong>
           <p id="office-message"></p>
+          <a href="https://www.libreoffice.org/installation-instructions/" target="_blank" rel="noopener" hidden>手动安装 LibreOffice</a>
           <button id="office-recheck" class="btn btn-outline btn-sm" type="button">重新检测</button>
         </div>
         <form id="upload-form" onsubmit="handleUpload(event)">
@@ -440,8 +440,8 @@
           <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="选择或拖入打印文件" onclick="choosePrintFile()">
             <div class="drop-icon"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></div>
             <div class="drop-text" id="file-label">选择文件或拖放至此处</div>
-            <div class="drop-hint">支持 PDF / Word / Excel / 图片</div>
-            <input type="file" id="file-input" style="display:none;" onchange="onFileSelected(this)">
+            <div class="drop-hint">支持 PDF / Word / Excel / PPT / TXT / Markdown / HTML / 图片</div>
+            <input type="file" id="file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.rtf,.txt,.csv,.md,.markdown,.html,.htm,.jpg,.jpeg,.png,.bmp" style="display:none;" onchange="onFileSelected(this)">
           </div>
           <div id="file-actions" class="file-actions" hidden><button type="button" class="btn btn-outline btn-sm" onclick="choosePrintFile()">更换文件</button><button type="button" class="btn btn-outline btn-sm" onclick="removeSelectedFile()">移除文件</button></div>
           </div><div class="print-settings-area">
@@ -517,7 +517,7 @@
     document.getElementById('recent-records-tbody').innerHTML='<tr><td colspan="5" class="empty-state">'+(printerId?'正在读取本机记录…':'请先选择打印设备。')+'</td></tr>';
   }
   function drawRecentRecords() {
-    document.getElementById('recent-records-tbody').innerHTML=(recentRecords||[]).map(job=>`<tr><td data-label="文件名称"><span class="doc-name" title="${escapeHTML(job.filename)}">${escapeHTML(job.filename)}</span></td><td data-label="提交时间"><time>${escapeHTML(job.created_at||'未提供时间')}</time></td><td data-label="提交人">${escapeHTML(job.user||'未知用户')}</td><td data-label="页数 / 份数">${escapeHTML(job.pages??'未知')} 页 / ${escapeHTML(job.copies??'未知')} 份</td><td data-label="状态">${renderLocalStatus(job.status)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">当前设备暂无本机打印记录。</td></tr>';
+    document.getElementById('recent-records-tbody').innerHTML=(recentRecords||[]).map(job=>`<tr><td data-label="文件名称"><span class="doc-name" title="${escapeHTML(job.filename)}">${escapeHTML(job.filename)}</span></td><td data-label="提交时间"><time>${escapeHTML(job.created_at||'未提供时间')}</time></td><td data-label="提交人">${escapeHTML(job.user||'未知用户')}</td><td data-label="页数 / 份数">${escapeHTML(job.pages??'未知')} 页 / ${escapeHTML(job.copies??'未知')} 份</td><td data-label="状态">${escapeHTML(localState(job.status))}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">当前设备暂无本机打印记录。</td></tr>';
   }
   async function fetchRecentRecords() {
     if(currentView!=='overview' || !activePrinterId || selectionRequired)return;
@@ -625,10 +625,28 @@
     document.getElementById('file-input').value = '';
     updateFileUI();
   }
-  async function requestJSON(url, options) {
+  (function initAuthTokens() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('token')) sessionStorage.setItem('print-hub-token', params.get('token'));
+      if (params.get('admin_token')) sessionStorage.setItem('print-hub-admin-token', params.get('admin_token'));
+    } catch (_) {}
+  })();
+  function authHeaders(base = {}) {
+    const headers = new Headers(base || {});
+    try {
+      const apiToken = sessionStorage.getItem('print-hub-token');
+      const adminToken = sessionStorage.getItem('print-hub-admin-token');
+      if (apiToken) headers.set('X-Print-Hub-Token', apiToken);
+      if (adminToken) headers.set('X-Print-Hub-Admin-Token', adminToken);
+    } catch (_) {}
+    return headers;
+  }
+  async function requestJSON(url, options = {}) {
     let response;
     try {
-      response = await fetch(url, options);
+      const reqOptions = { ...options, headers: authHeaders(options.headers) };
+      response = await fetch(url, reqOptions);
     } catch (cause) {
       const error = new Error('无法连接打印后台，请重新启动打印后台后刷新页面。', {cause});
       error.code = 'console_unreachable';
@@ -644,10 +662,10 @@
     return result;
   }
 
-  let officePolling = ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
+  let converterPolling = true;
   let officePollBusy = false;
   async function refreshOfficeProgress(recheck=false) {
-    if (!officePolling || officePollBusy) return;
+    if (!converterPolling || officePollBusy) return;
     officePollBusy = true;
     const banner = document.getElementById('office-progress');
     const stage = document.getElementById('office-stage');
@@ -657,34 +675,61 @@
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch('/api/office-status', {
-        cache:'no-store', method:recheck?'POST':'GET', signal:controller.signal
+      const convResp = await fetch('/api/converter-status', {
+        cache: 'no-store', headers: authHeaders(), signal: controller.signal
       });
-      if (response.status === 404 && banner.hidden && !recheck) { officePolling = false; return; }
+      if (convResp.status === 401) {
+        stage.textContent = '访问受限 · 需要令牌';
+        message.textContent = '请在网址末尾附加 ?token=访问口令 后刷新页面。';
+        banner.querySelector('a').hidden = true;
+        recheckButton.textContent = '重试';
+        banner.hidden = false;
+        return;
+      }
+      if (!convResp.ok) throw new Error('无法读取转换服务状态');
+      const conv = await convResp.json();
+      if (conv.mode !== 'local') {
+        stage.textContent = conv.up ? '转换服务：在线' : '转换服务：离线';
+        message.textContent = conv.up
+          ? 'Gotenberg 文档转换引擎就绪，支持 Word / Excel / PPT / Markdown / HTML / TXT 自动转 PDF。'
+          : '无法连接 Gotenberg 文档转换服务，Office 与文本文件将无法打印（PDF 与图片仍可直打）。';
+        banner.querySelector('a').hidden = true;
+        recheckButton.textContent = '刷新状态';
+        banner.hidden = false;
+        if (recheck) notify(stage.textContent + ' · ' + message.textContent, !conv.up);
+        return;
+      }
+
+      const isLoopback = ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
+      if (!isLoopback) { converterPolling = false; banner.hidden = true; return; }
+      const response = await fetch('/api/office-status', {
+        cache:'no-store', method:recheck?'POST':'GET', headers: authHeaders(), signal:controller.signal
+      });
+      if (response.status === 404 && banner.hidden && !recheck) { converterPolling = false; return; }
       if (!response.ok) throw new Error('无法读取检查状态');
       const office = await response.json();
-      if (!office.enabled) { officePolling = false; banner.hidden = true; return; }
-      const labels = {ready:(office.mode === 'local' ? '本机转换就绪' : '转换检查通过'), checking:'正在检查', unchecked:'待检测', missing:'未配置微服务', partial:'部分可用', needs_action:'需要处理'};
+      if (!office.enabled) { converterPolling = false; banner.hidden = true; return; }
+      const labels = {ready:'转换检查通过', checking:'正在检查', unchecked:'待检测', missing:'待安装', partial:'部分可用', needs_action:'需要处理'};
       const title = 'Word／Excel · ' + (labels[office.state] || '待检查');
       if (stage.textContent !== title) stage.textContent = title;
       const results = Object.entries({word:'Word', excel:'Excel'}).map(([key,label])=>{
         const detail=office.formats?.[key];
-        if (!detail) return '';
-        const time = (typeof detail.elapsed_seconds === 'number') ? '（' + detail.elapsed_seconds + ' 秒）' : '';
-        return label+'：'+detail.message+time;
+        return detail ? label+'：'+detail.message+'（'+detail.elapsed_seconds+' 秒）' : '';
       }).filter(Boolean);
       const checking = {word:'Word',excel:'Excel'}[office.checking_format];
       const detail = office.state === 'checking'
         ? (checking ? '正在检查 '+checking : '正在准备检查')+'（已等待 '+office.elapsed_seconds+' 秒）'
         : office.message;
-      const summary = [detail, ...results].filter(Boolean).join(' · ');
+      const summary = [office.version, detail, ...results].filter(Boolean).join(' · ');
       if (message.textContent !== summary) message.textContent = summary;
-      recheckButton.textContent = {checking:'检测中'}[office.state] || '重新检测';
+      banner.querySelector('a').hidden = office.state !== 'missing';
+      recheckButton.textContent = {checking:'检测中', missing:'已安装？重新检测'}[office.state] || '重新检测';
       banner.hidden = false;
       if (recheck) notify(office.message, !['ready','checking'].includes(office.state));
     } catch (_) {
-      stage.textContent = 'Word／Excel · 无法读取检查状态';
-      message.textContent = '请点击「重新检测」。后台若仍在检查，将继续显示同一次检查的进度。';
+      stage.textContent = '转换服务 · 无法读取状态';
+      message.textContent = '请点击刷新重试，或检查后台服务是否正常运行。';
+      banner.querySelector('a').hidden = true;
       recheckButton.textContent = '重新检测';
       banner.hidden = false;
     } finally {
@@ -734,39 +779,19 @@
   function renderStatusBadge(stateDesc) {
     if (!stateDesc) return '<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>未知</span>';
     const desc = String(stateDesc).trim();
-    if (/Stopped|暂停|故障|jam|empty|卡纸|缺纸/i.test(desc)) {
-      return `<span class="status-badge status-danger"><span class="status-dot dot-danger"></span>${escapeHTML(desc)}</span>`;
-    }
-    if (desc.includes('Aborted') || desc.includes('异常') || desc.includes('终止') || desc.includes('失败')) {
-      return `<span class="status-badge status-danger"><span class="status-dot dot-danger"></span>${escapeHTML(desc || '异常终止')}</span>`;
-    }
     if (desc.includes('Completed') || desc.includes('已完成') || desc.includes('成功')) {
       return '<span class="status-badge status-success"><span class="status-dot dot-success"></span>设备报告完成</span>';
     }
-    if (desc.includes('Processing') || desc.includes('打印中') || desc.includes('出纸')) {
-      return `<span class="status-badge status-info"><span class="status-dot dot-info"></span>${escapeHTML(desc || '正在出纸')}</span>`;
+    if (desc.includes('Aborted') || desc.includes('异常') || desc.includes('终止') || desc.includes('失败')) {
+      return '<span class="status-badge status-danger"><span class="status-dot dot-danger"></span>异常终止</span>';
     }
-    if (desc.includes('Pending') || desc.includes('排队') || desc.includes('挂起')) {
-      return `<span class="status-badge status-warning"><span class="status-dot dot-warning"></span>${escapeHTML(desc)}</span>`;
+    if (desc.includes('Processing') || desc.includes('打印中') || desc.includes('出纸')) {
+      return '<span class="status-badge status-info"><span class="status-dot dot-info"></span>正在出纸</span>';
     }
     if (desc.includes('Canceled') || desc.includes('取消')) {
       return '<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>已取消</span>';
     }
-    return `<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>${escapeHTML(desc)}</span>`;
-  }
-  function renderLocalStatus(status) {
-    const text = localState(status);
-    let cls = 'status-info';
-    if (status === 'failed' || status === 'unknown') {
-      cls = 'status-danger';
-    } else if (status === 'completed') {
-      cls = 'status-success';
-    } else if (status === 'canceled') {
-      cls = 'status-muted';
-    } else if (status === 'queued' || status === 'submitted' || status === 'unconfirmed') {
-      cls = 'status-warning';
-    }
-    return `<span class="status-badge ${cls}"><span class="status-dot"></span>${escapeHTML(text)}</span>`;
+    return `<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>${desc}</span>`;
   }
 
   function fileLocked() {return uploadInFlight || !!pendingUpload;}
@@ -821,31 +846,22 @@
   function renderDeviceCatalog(cluster) {
     printerCatalog=cluster;
     const select=document.getElementById('printer-select');
-    const markup='<option value="" disabled>请选择打印设备</option>'+cluster.map(p=>{
-      const isStopped = p.online && (p.state_code === 5 || /Stopped|暂停|故障/i.test(p.state_desc || '') || (p.reasons || []).some(r => /jam|empty|door|error/i.test(r)));
-      const stLabel = !p.online ? '离线' : (isStopped ? '暂停/故障' : '在线');
-      return `<option value="${escapeHTML(p.id)}">${escapeHTML(deviceLabel(p))} · ${stLabel}${p.is_default?' · 默认':''}</option>`;
-    }).join('');
+    const markup='<option value="" disabled>请选择打印设备</option>'+cluster.map(p=>`<option value="${escapeHTML(p.id)}">${escapeHTML(deviceLabel(p))} · ${p.online?'在线':'离线'}${p.is_default?' · 默认':''}</option>`).join('');
     if(markup!==selectorMarkup) {select.innerHTML=markup;selectorMarkup=markup;}
     select.value=activePrinterId||'';
     document.getElementById('upload-target-default').hidden=!cluster.some(p=>p.id===activePrinterId&&p.is_default);
     const list=document.getElementById('cluster-container');
     const focusedDevice=document.activeElement?.dataset.printerId;
     const focusedDefault=document.activeElement?.dataset.defaultPrinterId;
-    list.innerHTML=cluster.map(p=>{
-      const isStopped = p.online && (p.state_code === 5 || /Stopped|暂停|故障/i.test(p.state_desc || '') || (p.reasons || []).some(r => /jam|empty|door|error/i.test(r)));
-      const stateBadgeClass = !p.online ? 'status-danger' : (isStopped ? 'status-danger' : 'status-success');
-      const stateLabel = !p.online ? '离线' : (isStopped ? (p.state_desc || '暂停/故障') : '在线就绪');
-      return `<div class="device-row" aria-current="${p.id===activePrinterId}">
+    list.innerHTML=cluster.map(p=>`<div class="device-row" aria-current="${p.id===activePrinterId}">
       <div class="device-row-name"><strong>${escapeHTML(p.name)} ${p.is_default?'<span class="badge status-info">默认</span>':''}</strong><small>${escapeHTML(p.ip||'')}</small></div>
       <span class="device-row-location">${escapeHTML(p.location||'未设置位置')}</span>
-      <span class="device-row-state"><span class="status-badge ${stateBadgeClass}"><span class="status-dot"></span>${escapeHTML(stateLabel)}</span></span>
+      <span class="device-row-state" style="color:var(--${p.online?'success':'danger'})">${p.online?'在线':'离线'}</span>
       <span class="device-row-tasks">${Number(p.queued_count)||0} 个任务</span>
       <div class="device-row-actions">
         <button class="btn btn-outline btn-sm" data-printer-id="${escapeHTML(p.id)}" ${p.id===activePrinterId?'disabled':''}>${p.id===activePrinterId?'当前设备':'使用设备'}</button>
         ${deviceManagementAllowed&&!p.is_default?`<button class="btn btn-outline btn-sm" data-default-printer-id="${escapeHTML(p.id)}" ${defaultSaveBusy?'disabled':''}>设为默认</button>`:''}
-      </div></div>`;
-    }).join('')||'<p class="empty-state">暂无可用配置，请添加打印机。</p>';
+      </div></div>`).join('')||'<p class="empty-state">暂无可用配置，请添加打印机。</p>';
     list.querySelectorAll('[data-printer-id]').forEach(button=>{button.onclick=()=>switchPrinter(button.dataset.printerId);if(focusedDevice===button.dataset.printerId && !button.disabled)button.focus({preventScroll:true});});
     list.querySelectorAll('[data-default-printer-id]').forEach(button=>{
       button.onclick=()=>saveDefaultPrinter(button.dataset.defaultPrinterId);
@@ -986,10 +1002,11 @@
     const badgeText = document.getElementById('p-status-text');
     const alertBox = document.getElementById('printer-alert-box');
 
-    const isStopped = p.state_code === 5 || /Stopped|暂停|故障|jam|empty|卡纸|缺纸/i.test(p.state_desc || '') || (reasons || []).some(r => /jam|empty|door|error/i.test(r));
-    const isPrinting = p.state_code === 4 || /Processing|打印中/i.test(p.state_desc || '');
-
-    if (!p.online) {
+    if (p.online) {
+      badge.className = "badge badge-online";
+      badgeText.innerText = p.state_desc || "连通就绪";
+      if (alertBox) alertBox.style.display = 'none';
+    } else {
       badge.className = "badge badge-offline";
       badgeText.innerText = p.state_desc || "离线不可达";
       if (alertBox) {
@@ -997,22 +1014,6 @@
         document.getElementById('alert-err-summary').innerText = `打印机连通异常：${p.state_desc || '离线或网络不可达'}`;
         document.getElementById('alert-err-detail').innerText = p.error ? `底层网络返回：${p.error}` : '无法与打印机 631 端口建立 IPP 连接，请点击右侧按钮体检。';
       }
-    } else if (isStopped) {
-      badge.className = "badge badge-danger";
-      badgeText.innerText = p.state_desc || "暂停/故障 (Stopped)";
-      if (alertBox) {
-        alertBox.style.display = 'block';
-        document.getElementById('alert-err-summary').innerText = `打印机硬件异常：${p.state_desc || '暂停/故障 (Stopped)'}`;
-        document.getElementById('alert-err-detail').innerText = warnings || '打印机上报卡纸、缺纸或机盖打开等硬件故障，设备已暂停打印，请现场检查。';
-      }
-    } else if (isPrinting) {
-      badge.className = "badge status-info";
-      badgeText.innerText = p.state_desc || "正在打印";
-      if (alertBox) alertBox.style.display = 'none';
-    } else {
-      badge.className = "badge badge-online";
-      badgeText.innerText = p.state_desc || "连通就绪";
-      if (alertBox) alertBox.style.display = 'none';
     }
 
     const rUiBtn = document.getElementById('p-remote-ui');
@@ -1028,31 +1029,15 @@
     if (data.active_printing) {
       const act = data.active_printing;
       const initial = (act.user || "用")[0];
-      const stateText = act.state || '处理中';
-      let stateBadgeClass = 'status-info';
-      let bannerStyle = '';
-      let avatarStyle = '';
-      if (/Stopped|暂停|故障|jam|empty|Aborted|异常|失败|error/i.test(stateText)) {
-        stateBadgeClass = 'status-danger';
-        bannerStyle = 'border-color:#f5c2c7; background:#fff8f8;';
-        avatarStyle = 'background:#fceef0; color:var(--danger);';
-      } else if (/Processing|打印中|出纸/.test(stateText)) {
-        stateBadgeClass = 'status-info';
-      } else if (/Completed|完成|成功/.test(stateText)) {
-        stateBadgeClass = 'status-success';
-      } else if (/Pending|排队|挂起|Held/.test(stateText)) {
-        stateBadgeClass = 'status-warning';
-      }
-
       activeCont.innerHTML = `
-        <div class="active-banner" style="${bannerStyle}">
-          <div class="user-avatar" style="${avatarStyle}">${initial}</div>
+        <div class="active-banner">
+          <div class="user-avatar">${initial}</div>
           <div class="active-info">
-            <div class="active-doc" title="${escapeHTML(act.job_name)}"> ${escapeHTML(act.job_name)}</div>
+            <div class="active-doc" title="${act.job_name}"> ${act.job_name}</div>
             <div class="active-sub">
-              <span> 提交人：<strong>${escapeHTML(act.user)}</strong></span>
-              <span> 状态：<span class="status-badge ${stateBadgeClass}"><span class="status-dot"></span>${escapeHTML(act.state)}</span></span>
-              <span> 来源：${escapeHTML(act.source)}</span>
+              <span> 提交人：<strong>${act.user}</strong></span>
+              <span> 状态：<strong style="color:var(--success);">${act.state}</strong></span>
+              <span> 来源：${act.source}</span>
             </div>
           </div>
           <button class="btn btn-danger btn-sm" onclick="cancelJob(${act.job_id}, ${act.source.includes('硬件')})">撤销</button>
@@ -1097,7 +1082,7 @@
             <td><span style="font-size:12px; color:var(--text-muted);">${j.printer_name}</span></td>
             <td><span style="font-weight:600;">${j.pages ?? "待识别"}</span> 页</td>
             <td><span class="prio-pill ${pClass}">${pText}</span></td>
-            <td>${renderLocalStatus(j.status)}</td>
+            <td><span style="color:var(--primary); font-weight:500;">${localState(j.status)}</span></td>
             <td style="text-align:right; white-space:nowrap;">
               ${j.status === 'queued' ? `<button class="btn btn-urgent btn-sm" onclick="cutInLine(${j.id})">置顶</button>` : ''}
               <button class="btn btn-outline btn-sm" ${j.status !== 'queued' ? 'disabled' : ''} onclick="adjustPrio(${j.id}, ${Math.min(100, j.priority + 10)})" aria-label="提高优先级" title="提高优先级">▲</button>
@@ -1308,7 +1293,7 @@
       const key=(device?'device-':'local-')+id;
       const status=device?j.state_desc:localState(j.status);
       const detail=device ? `${j.state_message||''} ${reasonText(j.state_reasons)||''}` : `设备：${j.printer_name}；单双面：${({auto:'设备默认',simplex:'单面',duplex_long:'长边双面',duplex_short:'短边双面'})[j.duplex]||j.duplex}；份数：${j.copies??'未知'}；硬件编号：${j.hardware_job_id??'未取得'}；设备报告完成：${j.sheets_completed??'未知'} 张。${j.error_msg||''} ${reasonText(j.state_reasons)||''} ${deliveryDetails(j)}`;
-      return `<tr ${device?'':`data-job-id="${id}"`}><td data-label="来源">${device?'设备作业':'本机提交'}<br>#${escapeHTML(id)}</td><td data-label="文档名称"><span class="doc-name" title="${escapeHTML(device?j.job_name:j.filename)}">${escapeHTML(device?j.job_name:j.filename)}</span><span class="record-detail record-device" title="${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}">${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}</span></td><td data-label="提交时间" class="record-time">${escapeHTML(j.created_at||'设备未提供时间')}</td><td data-label="提交人">${escapeHTML(j.user||'未知用户')}</td><td data-label="页数 / 规格">${device?`${escapeHTML(j.sheets_completed??'未知')} 张（设备报告）`:`${escapeHTML(j.pages??'未知')} 页 / ${escapeHTML(j.copies??'未知')} 份`}</td><td data-label="出纸状态">${device?renderStatusBadge(j.state_desc):renderLocalStatus(j.status)}</td><td data-label="详情" class="record-actions" role="cell"><details class="record-detail" data-record-key="${key}" ${expanded.has(key)?'open':''}><summary>查看详情</summary><p>${escapeHTML(detail)}</p></details></td></tr>`;
+      return `<tr ${device?'':`data-job-id="${id}"`}><td data-label="来源">${device?'设备作业':'本机提交'}<br>#${escapeHTML(id)}</td><td data-label="文档名称"><span class="doc-name" title="${escapeHTML(device?j.job_name:j.filename)}">${escapeHTML(device?j.job_name:j.filename)}</span><span class="record-detail record-device" title="${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}">${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}</span></td><td data-label="提交时间" class="record-time">${escapeHTML(j.created_at||'设备未提供时间')}</td><td data-label="提交人">${escapeHTML(j.user||'未知用户')}</td><td data-label="页数 / 规格">${device?`${escapeHTML(j.sheets_completed??'未知')} 张（设备报告）`:`${escapeHTML(j.pages??'未知')} 页 / ${escapeHTML(j.copies??'未知')} 份`}</td><td data-label="出纸状态"><span class="status-badge">${escapeHTML(status)}</span></td><td data-label="详情" class="record-actions" role="cell"><details class="record-detail" data-record-key="${key}" ${expanded.has(key)?'open':''}><summary>查看详情</summary><p>${escapeHTML(detail)}</p></details></td></tr>`;
     }).join('') || '<tr><td colspan="7" class="empty-state">没有符合条件的记录</td></tr>';
     locateJob('history');
     paginationState.history.page=data.page;

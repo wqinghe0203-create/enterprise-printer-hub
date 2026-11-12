@@ -1,0 +1,15 @@
+[Unit]
+Description=Enterprise Printer Hub Center Service
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/enterprise-printer-hub
+EnvironmentFile=-/etc/enterprise-printer-hub.env
+ExecStart=/opt/enterprise-printer-hub/.venv/bin/python scripts/web_server.py --host 0.0.0.0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -8,6 +8,7 @@ data/
 config.json.bak
 config.json.lock
 *.log
+.DS_Store
 
 # Python
 __pycache__/
@@ -20,7 +21,8 @@ __pycache__/
 # Generated skill import packages and checksums
 dist/
 
-# Local Office converter dependencies and credentials
+# Local converter dependencies and credentials
+/deploy/.env
 /deploy/office-converter/native/wheelhouse/
 /deploy/office-converter/.env
 /deploy/office-converter/native/.env

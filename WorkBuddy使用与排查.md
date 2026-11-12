@@ -1,6 +1,6 @@
 # WorkBuddy 打印技能：使用指令与导入排查
 
-适用技能：enterprise-printer-hub（企业智能文印中心），正式交付版本 0.2.2。本文只整理用法，不会执行打印或修改设备。
+适用技能：enterprise-printer-hub（企业智能文印中心），正式交付版本 0.1.5。本文只整理用法，不会执行打印或修改设备。
 
 ## 一、截图中的“安全检测失败”
 
@@ -87,7 +87,7 @@ if (-not $PythonExe -or -not (Test-Path $PythonExe)) { throw '请先运行安装
 $PrinterId = 'printer_796e90e5ffc74775944350471c25b9d8' # 当前项目的 NPIC9D84C 示例 ID
 ```
 
-安装依赖使用技能根目录的 `安装依赖.bat`；Word / Excel 需由管理员配置内网转换服务。可在本机控制台点击「重新检测」，或通过技能 Python 运行 `scripts/bootstrap.py --retry-office`。服务不可用时可改传 PDF。不要使用别台电脑遗留的解释器路径。
+安装依赖使用技能根目录的 `安装依赖.bat`；Word / Excel 还需服务电脑安装可用的 Office / WPS。不要使用别台电脑遗留的解释器路径。
 
 ### 2. 查询与诊断
 

@@ -1,0 +1,25 @@
+services:
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: enterprise-print-gotenberg
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command:
+      - gotenberg
+      - --api-timeout=120s
+      # 定期重启 LibreOffice 子进程，防止长周期高并发导致内存膨胀
+      - --libreoffice-restart-after=50
+    # 如需将服务器本地中文字体挂载给 LibreOffice / Chromium（强烈建议在中文环境开启）：
+    # volumes:
+    #   - /usr/share/fonts/truetype/noto:/usr/share/fonts/custom:ro
+    #   - C:/Windows/Fonts:/usr/share/fonts/custom:ro
+    # 跨机部署建议开启 Basic Auth（凭证放在同目录 .env 文件中，不要写入仓库）：
+    # environment:
+    #   - GOTENBERG_API_BASIC_AUTH_USERNAME=${GOTENBERG_USER}
+    #   - GOTENBERG_API_BASIC_AUTH_PASSWORD=${GOTENBERG_PASSWORD}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

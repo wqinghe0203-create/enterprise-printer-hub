@@ -9,6 +9,7 @@
 
 import os
 import argparse
+import hmac
 import ipaddress
 import sys
 import json
@@ -30,11 +31,18 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from scripts.printer_service import PrinterService
-from scripts.config import get_server_config, get_printer, set_default_printer
+from scripts.config import (
+    get_auth_config,
+    get_converter_config,
+    get_printer,
+    get_server_config,
+    set_default_printer,
+)
+from scripts.doc_converter import SUPPORTED_EXTS
+from scripts.gotenberg_client import health as gotenberg_health
 from scripts.net_utils import get_host_lan_ip
 from scripts.bootstrap import MAC, OFFICE_PATH, READY_PATH, installation_id
-from scripts import office_check
-from scripts.office_remote import submission_error
+from scripts import mac_office_check
 from scripts.runtime_paths import ensure_directory
 
 TEMPLATE_PATH = os.path.join(BASE_DIR, "templates", "index.html")
@@ -53,16 +61,54 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        if not self.path.startswith(('/api/printer-probes', '/api/printers', OFFICE_PATH)):
+        if not self.path.startswith(('/api/printer-probes', '/api/printers')):
             self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
         self.wfile.write(body)
 
-    def _management_allowed(self, mutation=False):
+    def _is_loopback_client(self):
         try:
-            if not ipaddress.ip_address(self.client_address[0]).is_loopback:
+            return ipaddress.ip_address(self.client_address[0]).is_loopback
+        except ValueError:
+            return False
+
+    def _provided_token(self, header_name="X-Print-Hub-Token"):
+        token = self.headers.get(header_name, "").strip()
+        if token:
+            return token
+        auth_val = self.headers.get("Authorization", "").strip()
+        if auth_val.lower().startswith("bearer "):
+            return auth_val[7:].strip()
+        return ""
+
+    def _api_authorized(self):
+        """校验非本机 API 请求令牌；未配置 PRINT_HUB_API_TOKEN 时默认放行。"""
+        auth = get_auth_config()
+        api_token = auth["api_token"]
+        if not api_token or self._is_loopback_client():
+            return True
+        provided = self._provided_token("X-Print-Hub-Token")
+        if provided and hmac.compare_digest(provided, api_token):
+            return True
+        admin_token = auth["admin_token"]
+        admin_provided = self.headers.get("X-Print-Hub-Admin-Token", "").strip()
+        return bool(admin_token and admin_provided and hmac.compare_digest(admin_provided, admin_token))
+
+    def _require_api_auth(self):
+        if self._api_authorized():
+            return True
+        self._send_json({"success": False, "code": "unauthorized", "error": "缺少或无效的访问令牌 (PRINT_HUB_API_TOKEN)"}, 401)
+        return False
+
+    def _management_allowed(self, mutation=False):
+        admin_token = get_auth_config()["admin_token"]
+        admin_provided = self.headers.get("X-Print-Hub-Admin-Token", "").strip()
+        if admin_token and admin_provided and hmac.compare_digest(admin_provided, admin_token):
+            return True
+        try:
+            if not self._is_loopback_client():
                 return False
             host = self.headers.get('Host', '')
             parsed = urllib.parse.urlsplit('http://' + host)
@@ -140,7 +186,20 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             if not self._management_allowed():
                 self.send_error(404)
             else:
-                self._send_json(office_check.status())
+                local_mode = MAC and get_converter_config()['mode'] == 'local'
+                self._send_json({'enabled': local_mode, **(mac_office_check.status() if local_mode else {})})
+        elif path == '/api/converter-status':
+            if not self._require_api_auth():
+                return
+            cfg = get_converter_config()
+            if cfg['mode'] == 'local':
+                self._send_json({'mode': 'local', 'up': True, 'status': 'local'})
+            else:
+                status_info = gotenberg_health()
+                payload = {'mode': cfg['mode'], 'up': status_info['up'], 'status': status_info['status']}
+                if self._management_allowed():
+                    payload['url'] = status_info['url']
+                self._send_json(payload)
         elif path in ("/", "/index.html"):
             if os.path.exists(TEMPLATE_PATH):
                 with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
@@ -153,6 +212,8 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             else:
                 self.send_error(404, "Template Not Found")
         elif path == "/api/dashboard":
+            if not self._require_api_auth():
+                return
             printer_id = query.get("printer_id", [None])[0]
             data = svc.get_full_dashboard_data(selected_printer_id=printer_id)
             data['printer_management_allowed'] = self._management_allowed()
@@ -160,11 +221,15 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             data["web_ui_port"] = self.server.server_port
             self._send_json(data)
         elif path == '/api/history':
+            if not self._require_api_auth():
+                return
             args = {key: query.get(key, [''])[0] for key in ('search', 'user', 'status', 'start', 'end')}
             result = svc.scheduler.history(query.get('printer_id', [None])[0],
                 int(query.get('page', ['1'])[0]), int(query.get('size', ['5'])[0]), **args)
             self._send_json({'success': True, **result})
         elif path == '/api/task':
+            if not self._require_api_auth():
+                return
             if 'request_id' in query:
                 job = svc.scheduler.get_request(query['request_id'][0])
             else:
@@ -174,9 +239,13 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
                 job = svc.scheduler.get_job(job['id'])
             self._send_json({'success': True, 'job': job})
         elif path == "/api/cluster":
+            if not self._require_api_auth():
+                return
             cluster = svc.get_cluster_overview()
             self._send_json(cluster)
         elif path == "/api/diag":
+            if not self._require_api_auth():
+                return
             printer_id = query.get("printer_id", [None])[0]
             from scripts.diag import run_full_diagnosis
             diag_res = run_full_diagnosis(svc.resolve_printer_by_keyword(printer_id))
@@ -190,30 +259,36 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed.query)
 
         if path == OFFICE_PATH:
-            if not self._management_allowed(mutation=True):
+            if not (MAC and get_converter_config()['mode'] == 'local') or not self._management_allowed(mutation=True):
                 self.send_error(404)
             else:
-                self._send_json(office_check.start_check(background=True))
+                self._send_json({'enabled': True, **mac_office_check.start_check(force=True, background=True)})
         elif path in ('/api/printer-probes', '/api/printers'):
             self._registration_request(path, mutation=True)
         elif path == '/api/default-printer':
             if not self._management_allowed(mutation=True):
-                self._send_json({'success': False, 'error': '请在服务电脑打开本机控制台设置默认打印机'}, 403)
+                self._send_json({'success': False, 'error': '请在服务电脑打开本机控制台，或提供管理员令牌后设置默认打印机'}, 403)
                 return
             printer = set_default_printer(query.get('printer_id', [''])[0])
             self._send_json({'success': True, 'default_printer_id': printer['id']})
         elif path == "/api/cut_in":
+            if not self._require_api_auth():
+                return
             job_id = int(query.get("job_id", [0])[0])
             res = svc.emergency_cut_in(job_id)
             self._send_json(res)
 
         elif path == "/api/priority":
+            if not self._require_api_auth():
+                return
             job_id = int(query.get("job_id", [0])[0])
             prio = int(query.get("priority", [50])[0])
             res = svc.adjust_priority(job_id, prio)
             self._send_json(res)
 
         elif path == "/api/cancel":
+            if not self._require_api_auth():
+                return
             job_id = int(query.get("job_id", [0])[0])
             is_hw = (query.get("is_hw", ["false"])[0].lower() == "true")
             pid = query.get("printer_id", [None])[0]
@@ -221,9 +296,15 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             self._send_json(res)
 
         elif path == "/api/upload_print":
+            if not self._require_api_auth():
+                return
             c_type = self.headers.get("Content-Type", "")
             if "multipart/form-data" in c_type:
                 content_len = int(self.headers.get("Content-Length", 0))
+                max_bytes = get_converter_config()["max_upload_mb"] * 1024 * 1024 + 1024 * 1024
+                if content_len <= 0 or content_len > max_bytes:
+                    self._send_json({"success": False, "error": f"文件大小须在 {get_converter_config()['max_upload_mb']} MB 以内"}, 413)
+                    return
                 body_bytes = self.rfile.read(content_len)
 
                 # 使用标准库 email.parser 解析 multipart，兼容 Python 3.9 ~ 3.13+
@@ -285,9 +366,14 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
                 if existing:
                     self._send_json({'success': True, 'job': existing, 'message': '已找到本次提交，未重复创建任务'})
                     return
-                office_error = submission_error(orig_filename, len(file_bytes))
-                if office_error:
-                    self._send_json({'success': False, 'code': 'office_not_ready', 'error': office_error}, 409)
+                if MAC and get_converter_config()['mode'] == 'local':
+                    office_error = mac_office_check.submission_error(orig_filename)
+                    if office_error:
+                        self._send_json({'success': False, 'code': 'office_not_ready', 'error': office_error}, 409)
+                        return
+                ext = os.path.splitext(orig_filename)[1].lower()
+                if ext not in SUPPORTED_EXTS:
+                    self._send_json({'success': False, 'error': f'暂不支持打印 {ext or "无扩展名"} 文件；支持 PDF、Office、TXT、Markdown、HTML 与常见图片'}, 400)
                     return
                 target_pid = svc.resolve_printer_by_keyword(printer_target)
                 target_config = get_printer(target_pid)
@@ -332,6 +418,8 @@ def run_server(port=None, host="0.0.0.0"):
     stop = threading.Event()
     worker = threading.Thread(target=svc.run_worker, args=(stop,), daemon=True, name='print-worker')
     worker.start()
+    if MAC and get_converter_config()['mode'] == 'local':
+        mac_office_check.start_check(background=True)
     local_ip = get_host_lan_ip()
 
     print("==========================================================")

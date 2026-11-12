@@ -11,11 +11,10 @@ import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
-from .config import BASE_DIR, get_printers, get_printer, get_default_printer_id
+from .config import BASE_DIR, get_printers, get_printer, get_default_printer_id, get_converter_config
 from .ipp_core import IPPClient
 from .queue_scheduler import QueueScheduler
 from .doc_converter import prepare_printable_file
-from .office_remote import submission_error
 from .pwg_raster import pdf_to_pwg
 
 class PrinterService:
@@ -43,9 +42,7 @@ class PrinterService:
                 "ip": p.get("ip", ""),
                 "gateway": p.get("gateway", ""),
                 "online": hw.get("online", False),
-                "state_code": hw.get("state_code", 3 if hw.get("online") else 0),
                 "state_desc": hw.get("state_desc", "未知"),
-                "reasons": hw.get("reasons", []),
                 "error": hw.get("error", ""),
                 "queued_count": len([j for j in q_jobs if not j.get("hardware_job_id")]) + (hw.get("queued_jobs", 0) if hw.get("online") else 0),
                 "is_default": (pid == get_default_printer_id()),
@@ -114,7 +111,6 @@ class PrinterService:
                 "ip": p_cfg.get("ip", ""),
                 "gateway": p_cfg.get("gateway", ""),
                 "online": hw_status.get("online", False),
-                "state_code": hw_status.get("state_code", 3 if hw_status.get("online") else 0),
                 "state_desc": hw_status.get("state_desc", "未知"),
                 "error": hw_status.get("error", ""),
                 "reasons": hw_status.get("reasons", []),
@@ -161,10 +157,12 @@ class PrinterService:
         target_pid = self.resolve_printer_by_keyword(printer_target)
         printer_info = get_printer(target_pid)
 
-        from .office_remote import submission_error
-        error = submission_error(filepath)
-        if error:
-            return {'success': False, 'error': error}
+        if sys.platform == 'darwin' and get_converter_config()['mode'] == 'local':
+            from .mac_office_check import submission_error
+
+            error = submission_error(filepath, use_console=True)
+            if error:
+                return {'success': False, 'error': error}
 
         job = self.scheduler.enqueue(filepath, user, target_pid, filename, priority,
                                      pages=None, duplex=duplex, copies=copies, needs_conversion=True)

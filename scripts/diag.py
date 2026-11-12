@@ -23,7 +23,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from scripts.config import get_printers, get_printer, get_default_printer_id
+from scripts.config import get_printers, get_printer, get_default_printer_id, get_converter_config
+from scripts.gotenberg_client import health as gotenberg_health
 from scripts.net_utils import get_host_lan_ip
 
 try:
@@ -233,6 +234,16 @@ def run_full_diagnosis(printer_id: Optional[str] = None) -> Dict[str, Any]:
         if proxy_info["env_proxies"]:
             conclusions.append(f"ℹ️ 检测到存在代理环境变量（{', '.join(proxy_info['env_proxies'].keys())}）。")
 
+    conv_cfg = get_converter_config()
+    converter_status = (
+        {"mode": "local", "up": True, "url": "", "status": "local"}
+        if conv_cfg["mode"] == "local"
+        else {"mode": conv_cfg["mode"], **gotenberg_health()}
+    )
+    if conv_cfg["mode"] != "local" and not converter_status["up"]:
+        conclusions.append(f"⚠️ 文档转换服务（Gotenberg {converter_status['url']}）当前不可达，Office/文本文件将无法转换。")
+        recommendations.append(f"请检查 Gotenberg 容器是否已运行，并验证 {converter_status['url']}/health 是否返回 status=up。")
+
     return {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "host": {
@@ -249,6 +260,7 @@ def run_full_diagnosis(printer_id: Optional[str] = None) -> Dict[str, Any]:
             "gateway": p_cfg.get("gateway")
         },
         "proxy": proxy_info,
+        "converter": converter_status,
         "ping_ok": ping_ok,
         "ports": port_results,
         "ipp_test": ipp_test,
@@ -280,7 +292,8 @@ def format_diag_report(diag: Dict[str, Any]) -> str:
         f"| **IPP 打印服务** | TCP 631 | {'🟢 端口开放' if pts['ipp_631']['open'] else '🔴 端口关闭/受阻'} | {fmt_ms(pts['ipp_631']['latency_ms'])} |",
         f"| **佳能 Remote UI** | TCP {p.get('remote_ui_port', 8000)} | {'🟢 端口开放' if pts['remote_ui']['open'] else '🔴 端口关闭'} | {fmt_ms(pts['remote_ui']['latency_ms'])} |",
         f"| **RAW 打印通道** | TCP 9100 | {'🟢 端口开放' if pts['raw_9100']['open'] else '🔴 端口关闭'} | {fmt_ms(pts['raw_9100']['latency_ms'])} |",
-        f"| **IPP 协议握手** | RFC 8011 | {'🟢 握手成功' if ipp['success'] else '🔴 握手失败'} | {fmt_ms(ipp['latency_ms'])} |\n",
+        f"| **IPP 协议握手** | RFC 8011 | {'🟢 握手成功' if ipp['success'] else '🔴 握手失败'} | {fmt_ms(ipp['latency_ms'])} |",
+        f"| **Gotenberg 转换** | `{diag.get('converter', {}).get('url') or 'local'}` | {'🟢 在线就绪' if diag.get('converter', {}).get('up') else '🔴 不可达'} | - |\n",
         "### 🎯 诊断结论\n"
     ]
 

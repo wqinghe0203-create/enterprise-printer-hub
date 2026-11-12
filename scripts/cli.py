@@ -88,14 +88,7 @@ def cmd_status(args):
     data = svc.get_full_dashboard_data(target_pid)
     printer = data["printer"]
 
-    if not printer["online"]:
-        status_tag = "`🔴 离线报警`"
-    elif printer.get("state_code") == 5 or any(k in str(printer.get("state_desc", "")) for k in ("暂停", "故障", "Stopped")):
-        status_tag = f"`🔴 {printer.get('state_desc', '暂停/故障')}`"
-    elif printer.get("state_code") == 4 or "Processing" in str(printer.get("state_desc", "")):
-        status_tag = "`🔵 正在出纸`"
-    else:
-        status_tag = "`🟢 在线就绪`"
+    status_tag = "`🟢 在线就绪`" if printer["online"] else "`🔴 离线报警`"
     print(f"# 🖨️ 设备状态卡片 · {printer['name']}\n")
     print(f"> #### {printer['name']} · {status_tag}")
     print(f"> - 📍 **物理位置**：{printer['location']}")
@@ -118,13 +111,7 @@ def cmd_queue(args):
     total_q = len(queue) + len(hw_jobs)
 
     print(f"# 🖨️ [{printer['name']}] 智能调度控制台\n")
-    if not printer["online"]:
-        st_desc = "`🔴 离线`"
-    elif printer.get("state_code") == 5 or any(k in str(printer.get("state_desc", "")) for k in ("暂停", "故障", "Stopped")):
-        st_desc = f"`🔴 {printer.get('state_desc', '暂停/故障')}`"
-    else:
-        st_desc = "`🟢 连通就绪`"
-    print(f"📍 **位置**：`{printer['location']}` ｜ **状态**：{st_desc}\n")
+    print(f"📍 **位置**：`{printer['location']}` ｜ **状态**：{'`🟢 连通就绪`' if printer['online'] else '`🔴 离线`'}\n")
 
     print("| 🎯 实时出纸 | ⏳ 排队待办 | 🏭 设备型号 |")
     print("| :---: | :---: | :---: |")
@@ -133,10 +120,8 @@ def cmd_queue(args):
     # 1. 谁在打印
     print("### 🎯 实时出纸透视")
     if active:
-        act_state = active.get('state', '') or ''
-        state_icon = "🔴" if any(k in str(act_state) for k in ("暂停", "故障", "Stopped", "Aborted", "异常", "失败")) else "🟢"
         print(f"> 📄 **文档名称**：`{active['job_name']}`  ")
-        print(f"> 👤 **当前打印人**：`{active['user']}` ｜ **作业状态**：`{state_icon} {act_state}` ｜ **已出纸**：{active.get('sheets', 0)} 张 ｜ **来源**：{active['source']}")
+        print(f"> 👤 **当前打印人**：`{active['user']}` ｜ **作业状态**：`🟢 {active['state']}` ｜ **已出纸**：{active.get('sheets', 0)} 张 ｜ **来源**：{active['source']}")
     else:
         print("> 🟢 **当前无人打印**：设备处于就绪待机中，新提交的公文无需等待，直接出纸。")
     print()
@@ -159,11 +144,9 @@ def cmd_queue(args):
             idx += 1
 
         for hj in hw_jobs:
-            hj_state = hj.get('state_desc', '') or ''
-            hj_icon = "🔴" if any(k in str(hj_state) for k in ("暂停", "故障", "Stopped", "Aborted", "异常", "失败")) else "🔵"
             print(f"> **物理机在机 · 任务 `硬件#{hj['job_id']}`** · `⚡ 硬件排队`")
             print(f"> - 📄 **文档**：**{hj['job_name']}**")
-            print(f"> - 👤 **提交人**：`{hj['user']}` ｜ **状态**：{hj_icon} {hj_state}")
+            print(f"> - 👤 **提交人**：`{hj['user']}` ｜ **状态**：{hj['state_desc']}")
             print(">")
             idx += 1
         print()

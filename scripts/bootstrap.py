@@ -1,7 +1,6 @@
 """Prepare this installation and open its local console without submitting a job."""
 
 import argparse
-import errno
 from contextlib import contextmanager
 import hashlib
 import http.client
@@ -57,11 +56,7 @@ def bootstrap_lock(name='bootstrap.lock', wait=3):
                     import fcntl
                     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
-            except OSError as exc:
-                busy_errors = (errno.EACCES, errno.EAGAIN) if WINDOWS else (errno.EAGAIN, errno.EWOULDBLOCK)
-                if exc.errno not in busy_errors:
-                    raise OSError(exc.errno, '无法取得配置锁，请检查 WorkBuddy 授权和目录权限',
-                                  str(lock_path)) from exc
+            except OSError:
                 if time.monotonic() >= deadline:
                     raise SetupBusy('另一个配置任务正在进行。')
                 time.sleep(0.25)
@@ -133,8 +128,27 @@ def prepare_python():
 
 
 def office_status():
-    from scripts.office_check import status
-    return status()
+    if WINDOWS:
+        import winreg
+        groups = [('Word', ('Word.Application', 'KWPS.Application', 'WPS.Application')),
+                  ('Excel', ('Excel.Application', 'KET.Application', 'ET.Application'))]
+        registered = {}
+        for name, prog_ids in groups:
+            registered[name.lower()] = False
+            for prog_id in prog_ids:
+                try:
+                    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, prog_id + '\\CLSID'):
+                        registered[name.lower()] = True
+                        break
+                except OSError:
+                    continue
+        return {**registered, 'message': 'Office/WPS 组件以实际转换为准。缺少组件时请先导出 PDF。'}
+
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    if find_office_executable():
+        return office_state('unchecked', '已找到 LibreOffice，请在管理台查看或重新检测 Word 和 Excel。')
+    return office_state('missing', '请将 LibreOffice 安装到「应用程序」，然后重新检测。')
 
 
 def office_state(state, message):
@@ -295,14 +309,26 @@ def main():
             return subprocess.call([str(PYTHON), '-u', 'scripts/web_server.py', str(port),
                                     '--host', CONSOLE_HOST], cwd=ROOT)
         if args.office_status or args.retry_office:
-            phase = 'Office 检查'
-            port = console_port(args.port)
-            office = console_office_status(port, retry=args.retry_office)
-            if office is None and args.retry_office:
-                from scripts.office_check import start_check
+            if MAC:
+                from scripts.mac_office_check import CLI_TIMEOUT, start_check, status
 
-                office = start_check()
-            print(json.dumps(office if office is not None else office_status(), ensure_ascii=False))
+                phase = 'Office 检查'
+                port = console_port(args.port)
+                office = console_office_status(port, retry=args.retry_office)
+                if office is not None:
+                    print(json.dumps(office, ensure_ascii=False))
+                    return 0
+                if Path(sys.prefix).resolve() != PYTHON.parent.parent.resolve():
+                    if not python_check('import pypdf, PIL, pymupdf'):
+                        print(json.dumps(office_state('needs_action', '技能 Python 依赖缺失，请重新运行首次配置。'), ensure_ascii=False))
+                        return 1
+                    flag = '--retry-office' if args.retry_office else '--office-status'
+                    return subprocess.run([str(PYTHON), str(Path(__file__).resolve()), flag, '--port', str(port)],
+                                          timeout=CLI_TIMEOUT).returncode
+                office = start_check(force=True) if args.retry_office else status()
+            else:
+                office = office_status()
+            print(json.dumps(office, ensure_ascii=False))
             return 0
         with bootstrap_lock():
             marker = ROOT / 'data' / 'bootstrap-ready'
@@ -327,7 +353,7 @@ def main():
                 if not already_initialized:
                     marker.touch()
             phase = 'Office 检查'
-            office = (console_office_status(port) if result.get('console_verified') else None) or office_status()
+            office = (console_office_status(port) if MAC and result.get('console_verified') else None) or office_status()
             if result.get('console_verified') and probe_console(port) != 'ready':
                 raise RuntimeError('控制台进程在启动后退出或失去响应，请查看 data/console.log。')
             result.update(office=office, status='ready' if office['word'] and office['excel'] else 'partial',
@@ -336,7 +362,7 @@ def main():
         return 0
     except SetupBusy as error:
         print(json.dumps({'status': 'busy', 'phase': phase, 'message': str(error),
-                          'office': office_status()}, ensure_ascii=False))
+                          'office': office_status() if MAC else None}, ensure_ascii=False))
         return 2
     except (OSError, RuntimeError, ValueError, http.client.HTTPException, subprocess.TimeoutExpired) as error:
         print(json.dumps({'status': 'failed', 'phase': phase, 'message': str(error),

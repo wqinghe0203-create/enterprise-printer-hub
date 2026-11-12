@@ -1,17 +1,43 @@
 ---
 name: enterprise-printer-hub
-description: 企业多打印机状态查询、实时作业查看、文件打印和任务调度技能。用于“添加打印机”“接入网络打印机”“谁在打印”“打印机列表”“查看27楼队列”“打印这份文件”“紧急插队”“取消打印”“打开打印后台”“Word 或 Excel 转换可用吗”及打印机网络诊断。通过本技能自带 Python CLI 和网页工作台操作 config.json 中的设备。
+description: 企业多打印机状态查询、实时作业查看、文件打印和任务调度技能。用于“添加打印机”“接入网络打印机”“谁在打印”“打印机列表”“查看27楼队列”“打印这份文件”“紧急插队”“取消打印”“打开打印后台”“LibreOffice 安装好了吗”及打印机网络诊断。通过本技能自带 Python CLI 和网页工作台操作 config.json 中的设备。
 metadata:
-  version: "0.2.2"
+  version: "0.1.5"
 ---
 
 # 企业智能文印中心 · WorkBuddy 技能
 
-本目录就是完整技能根目录，包含 CLI、网页 UI、配置和 Windows 启动器。部署与依赖安装见 [README.md](README.md)。保持目录名 `enterprise-printer-hub`，不要只复制本文件。
+本目录就是完整技能根目录，支持**中心服务器远程模式（推荐）**与**本机直连模式**。保持目录名 `enterprise-printer-hub`，不要只复制本文件。
 
-## 首次调用与打开控制台
+## 模式判别（最高优先级）
 
-首次使用或用户要求打开控制台时，先发一条可见进度：“我正在检查打印环境。PDF 和图片所需的依赖就绪后，我会打开打印后台。”然后在实际技能根目录运行对应入口，读取最后一行 JSON。
+每次调用前，先检查技能目录是否存在 `remote.json`，或系统环境变量是否设置了 `PRINT_HUB_SERVER`：
+
+- **若存在 `remote.json` 或 `PRINT_HUB_SERVER`（中心服务器模式，同事端推荐）**：
+  - **严禁**在本机运行 `bootstrap-windows.ps1`、`bootstrap-mac.sh`、安装 `.venv` 依赖或启动本地 `web_server.py`。
+  - 直接使用本机任意 Python 3（`python` / `py -3` / `python3`）执行 `scripts/remote_cli.py`（零第三方依赖），通过 HTTP 将文件上传给公司中心打印服务器并由 Gotenberg 转换打印。
+  - 若环境变量设置了 `PRINT_HUB_API_TOKEN` / `PRINT_HUB_ADMIN_TOKEN`，`remote_cli.py` 会自动附带鉴权请求头。
+  - 支持文件格式：`PDF`、`DOC/DOCX`、`XLS/XLSX`、`PPT/PPTX`、`ODT/ODS/ODP`、`RTF`、`TXT`、`CSV`、`MD/MARKDOWN`、`HTML/HTM`、`JPG/JPEG/PNG/BMP`。
+
+```sh
+# 远程模式常用命令（Windows/macOS/Linux 通用）
+python scripts/remote_cli.py printers
+python scripts/remote_cli.py queue --printer "27楼"
+python scripts/remote_cli.py print --file "<实际附件路径>" --user "张三" --printer "27楼" --duplex duplex_long --copies 1
+python scripts/remote_cli.py task --job-id 105 --verify
+python scripts/remote_cli.py cut-in --job-id 105
+python scripts/remote_cli.py cancel --job-id 105
+python scripts/remote_cli.py diag --printer "27楼"
+# 需配置 PRINT_HUB_ADMIN_TOKEN 后方可执行远程管理命令：
+python scripts/remote_cli.py add-printer --ip "10.1.36.229" --name "研发区" --location "26F" --save
+python scripts/remote_cli.py set-default --printer "28楼"
+```
+
+- **若均未配置（管理员本机运行模式）**：继续按下方「首次调用与打开控制台」执行。
+
+## 首次调用与打开控制台（仅本机模式）
+
+首次使用或用户要求打开控制台时，先发一条可见进度：“我正在检查打印环境。PDF 和图片所需的依赖就绪后，我会打开打印后台。Mac 会在后台检查已安装的 LibreOffice。”然后在实际技能根目录运行对应入口，读取最后一行 JSON。
 
 **Windows 打开控制台时使用 WorkBuddy 管理的 PowerShell 后台任务。** 从本技能实际安装目录执行：
 
@@ -27,11 +53,11 @@ macOS 继续运行：
 /bin/zsh ./scripts/bootstrap-mac.sh --first-use
 ```
 
-macOS 用户明确要求打开控制台时省略 `--first-use`。仅在 `console_verified: true` 时报告服务就绪。浏览器未打开时提供返回地址。等待配置入口完成并读取最后一行 JSON，首次配置 Windows 依赖最多等待 90 秒。启动失败时报告返回的原因；不要直接运行网页脚本或用浏览器开页代替服务就绪检查。Windows 已就绪但页面失败时，另起一次只读请求核查返回地址的 /api/local-ready，核查失败就明确说明服务未在运行。Word 和 Excel 的远程转换结果分别显示在本机控制台。缺少服务配置时，提示联系管理员或改传 PDF。若返回 `busy`，报告正在配置；若返回 `failed`，按 `phase` 和 `message` 告知失败原因。端口冲突可用 `--port 18829`。
+macOS 用户明确要求打开控制台时省略 `--first-use`。仅在 `console_verified: true` 时报告服务就绪。浏览器未打开时提供返回地址。等待配置入口完成并读取最后一行 JSON，首次配置 Windows 依赖最多等待 90 秒。启动失败时报告返回的原因；不要直接运行网页脚本或用浏览器开页代替服务就绪检查。Windows 已就绪但页面失败时，另起一次只读请求核查返回地址的 /api/local-ready，核查失败就明确说明服务未在运行。Mac 的 Word 和 Excel 状态以本机转换检查为准，按对应格式判断。缺少 LibreOffice 时请用户手动安装，再点击「重新检测」。若返回 `busy`，报告正在配置；若返回 `failed`，按 `phase` 和 `message` 告知失败原因。端口冲突可用 `--port 18829`。
 
-用户询问 Word 或 Excel 转换状态时，使用技能 Python 执行 `scripts/bootstrap.py --office-status`。用户要求复检时使用 `--retry-office`，它只发送内置样例。控制台运行时可用 `--office-status` 查询后台进度。根据返回的 `word`、`excel` 和各自的消息报告结果。
+Mac 用户询问安装进度时，运行 `.venv/bin/python scripts/bootstrap.py --office-status` 读取一次状态。用户要求重试或手动安装后重新检查时，运行 `/bin/zsh ./scripts/bootstrap-mac.sh --retry-office --no-browser`。真实进度以返回状态为准。客户端无主动通知能力时，以网页进度为准。
 
-仅打开网页、查询设备或记录的请求不创建任务。收到明确打印请求后使用原有 CLI。Office 转换未配置或失败时，按 CLI 返回原因告知用户，并提示可改传 PDF。检查结果仅用于诊断，以当前任务状态为准。
+仅打开网页、查询设备或记录的请求不创建任务。收到明确打印请求时，Mac 的 Word／Excel 先读取 Office 状态；按对应格式的 `word` 或 `excel` 字段判断；未通过时报告原因。安装完成后由用户再次确认提交，不在后台自动打印。环境已就绪的普通打印继续使用本目录解释器及原有 CLI。
 
 ## 给用户的结果回复（默认中文表格）
 
@@ -104,7 +130,7 @@ if (-not $PythonExe -or -not (Test-Path $PythonExe)) { throw '未检测到 Pytho
 
 从其他电脑复制来的 `_local.json` 可能含无效路径，不直接信任其中的解释器。首次配置使用上面的平台入口；Windows 用户也可手动运行根目录的 `安装依赖.bat`。后续 CLI 和 Web 使用本目录的同一个 `.venv` 解释器。
 
-macOS / Linux 使用技能目录的 `.venv/bin/python` 或有效的 `python3`，将下述 CLI 参数原样传入。PDF 光栅转换依赖 `PyMuPDF`。所有平台的 Office 转换使用管理员配置的内网 HTTPS 服务。配置和凭据保存在技能目录的 `data/office-converter.json`，具体设置见 README。转换后的 PDF 在投递前检查可见中文的缺失字形。发生缺字时请管理员检查服务端字体，或让用户上传显示正常的 PDF。
+macOS / Linux 使用技能目录的 `.venv/bin/python` 或有效的 `python3`，将下述 CLI 参数原样传入。PDF 光栅转换依赖 `PyMuPDF`。Windows Office 转换依赖 `pywin32` 以及可用的 Word / Excel / WPS COM；macOS / Linux Office 转换依赖 LibreOffice。缺少转换器时可以先导出 PDF。Mac 的 LibreOffice 子进程会单独配置系统字体与 AssetsV2 字体目录；PDF 在投递前检查可见中文的缺失字形，避免文字可提取但打印为空白。不要把中文缺字误判为打印机故障，也不要通过修改源文档字体或盲目重投掩盖问题。网页使用者不必安装依赖，依赖装在运行服务的电脑上。
 
 ## 设备和队列
 
@@ -147,7 +173,7 @@ macOS / Linux 使用技能目录的 `.venv/bin/python` 或有效的 `python3`，
 
 ## 打印用户提供的文件
 
-用户明确要求打印时，从附件取得实际的本地文件路径，不构造不存在的路径。支持 PDF、DOC/DOCX、XLS/XLSX、JPG/JPEG/PNG/BMP；Office 原文件会通过 HTTPS 发送到管理员配置的公司转换服务。
+用户明确要求打印时，从附件取得实际的本地文件路径，不构造不存在的路径。支持 PDF、DOC/DOCX、XLS/XLSX、JPG/JPEG/PNG/BMP；Office 与图片需要相应转换组件。
 
 ```powershell
 & $PythonExe "$SkillRoot\scripts\cli.py" print --file "C:\实际附件目录\文件.pdf" --user "张三" --printer "27楼" --priority 50 --duplex duplex_long --copies 1
@@ -214,7 +240,7 @@ WorkBuddy 收到打开网页工作台的请求时，使用本说明开头的平�
 
 ## 正式交付版本
 
-当前导入包为 enterprise-printer-hub-0.2.2-import.zip，提供 Windows／Mac 首次配置和本机控制台启动入口。导入包排除历史 EXE、虚拟环境及用户数据。发行包内 manifest 与本文件版本必须一致。
+当前导入包为 enterprise-printer-hub-0.1.5-import.zip，提供 Windows／Mac 首次配置和本机控制台启动入口。导入包排除历史 EXE、虚拟环境及用户数据。发行包内 manifest 与本文件版本必须一致。
 
 ## 网页操作细节（0.0.1）
 

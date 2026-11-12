@@ -10,7 +10,7 @@ if errorlevel 1 goto failed
 :install
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto failed
-".venv\Scripts\python.exe" -c "import pypdf, PIL, pymupdf, pythoncom, win32com.client; print('依赖检查通过')"
+".venv\Scripts\python.exe" -c "import pypdf, PIL, pymupdf, pythoncom, win32com.client, win32print; print('依赖检查通过')"
 if errorlevel 1 goto failed
 echo 安装完成。WorkBuddy 请使用本目录 .venv\Scripts\python.exe。
 echo 现在可双击“启动网页控制台.bat”，或在 WorkBuddy 中使用本技能。

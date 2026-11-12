@@ -44,6 +44,12 @@ DEFAULT_CONFIG = {
         "auto_refresh_sec": 3,
         "allow_lan_access": True
     },
+    "converter": {
+        "mode": "gotenberg",
+        "gotenberg_url": "http://127.0.0.1:3000",
+        "timeout_sec": 120,
+        "max_upload_mb": 50
+    },
     "queue": {
         "default_priority": 50,
         "max_priority": 100,
@@ -219,3 +225,43 @@ def get_server_config() -> Dict[str, Any]:
 def get_queue_config() -> Dict[str, Any]:
     cfg = load_config()
     return cfg.get("queue", DEFAULT_CONFIG["queue"])
+
+
+def get_converter_config() -> Dict[str, Any]:
+    """读取文档转换器配置；环境变量优先于 config.json。
+
+    Returns:
+        Dict[str, Any]: 包含 mode、gotenberg_url、timeout_sec、max_upload_mb 与可选 basic_auth 元组
+    Example:
+        >>> get_converter_config()['mode']
+        'gotenberg'
+    """
+    cfg = {**DEFAULT_CONFIG["converter"], **load_config().get("converter", {})}
+    cfg["gotenberg_url"] = os.environ.get("PRINT_HUB_GOTENBERG_URL", cfg["gotenberg_url"]).strip().rstrip("/")
+    mode = os.environ.get("PRINT_HUB_CONVERTER_MODE", cfg["mode"]).strip().lower()
+    if mode not in ("gotenberg", "local", "auto"):
+        raise ValueError(f"不支持的转换模式: {mode}，仅支持 gotenberg / local / auto")
+    cfg["mode"] = mode
+    if os.environ.get("PRINT_HUB_GOTENBERG_TIMEOUT"):
+        cfg["timeout_sec"] = int(os.environ["PRINT_HUB_GOTENBERG_TIMEOUT"])
+    if os.environ.get("PRINT_HUB_MAX_UPLOAD_MB"):
+        cfg["max_upload_mb"] = int(os.environ["PRINT_HUB_MAX_UPLOAD_MB"])
+    user = os.environ.get("PRINT_HUB_GOTENBERG_USER")
+    password = os.environ.get("PRINT_HUB_GOTENBERG_PASSWORD")
+    cfg["basic_auth"] = (user, password) if user and password else None
+    return cfg
+
+
+def get_auth_config() -> Dict[str, Optional[str]]:
+    """读取服务端可选鉴权令牌，仅从环境变量加载以防凭证硬编码。
+
+    Returns:
+        Dict[str, Optional[str]]: 包含 api_token 与 admin_token（未配置时为 None）
+    Example:
+        >>> sorted(get_auth_config().keys())
+        ['admin_token', 'api_token']
+    """
+    api_token = os.environ.get("PRINT_HUB_API_TOKEN", "").strip() or None
+    admin_token = os.environ.get("PRINT_HUB_ADMIN_TOKEN", "").strip() or None
+    return {"api_token": api_token, "admin_token": admin_token}
+

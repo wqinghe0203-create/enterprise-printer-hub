@@ -1,16 +1,60 @@
 # 企业智能文印中心 · WorkBuddy 技能包
 
-版本：0.2.2。支持 WorkBuddy 对话调用与网页控制台，包含多设备状态、实时作业、队列优先级管理、文件投递、历史记录和网络诊断。
+版本：0.1.5。支持 WorkBuddy 对话调用与网页控制台，包含多设备状态、实时作业、队列优先级管理、文件投递、历史记录和网络诊断。
 
-## WorkBuddy 首次使用
+## 中心服务器部署（Linux / Windows + Docker Gotenberg）
+
+适用于公司在内网搭建**唯一中心打印服务器**，同事通过 WorkBuddy 远程瘦客户端（`scripts/remote_cli.py`）或浏览器共用同一打印队列与历史，无需在每台电脑安装 Office / LibreOffice 或 Python 第三方库。
+
+### 1. 启动 Docker Gotenberg 文档转换服务（默认 `http://127.0.0.1:3000`）
+
+```sh
+cd deploy
+docker compose -f docker-compose.gotenberg.yml up -d
+# 验证转换引擎在线：
+curl http://127.0.0.1:3000/health
+```
+
+> 若服务器需打印中文 Word / Excel / PPT / Markdown，建议取消 `deploy/docker-compose.gotenberg.yml` 中字体目录挂载的注释，将宿主机中文字体（如思源黑体 / Windows Fonts）只读挂载到容器内 `/usr/share/fonts/custom`。
+
+### 2. 启动中心打印服务（Linux / Windows）
+
+* **Linux 服务器**：
+  ```sh
+  python3 -m venv .venv
+  .venv/bin/python -m pip install -r requirements.txt
+  cp deploy/linux/enterprise-printer-hub.env.example /etc/enterprise-printer-hub.env
+  # 按需配置 PRINT_HUB_GOTENBERG_URL、PRINT_HUB_API_TOKEN、PRINT_HUB_ADMIN_TOKEN
+  .venv/bin/python scripts/web_server.py --host 0.0.0.0
+  ```
+  *(生产托管可将 `deploy/linux/enterprise-printer-hub.service` 注册为 systemd 常驻服务。)*
+* **Windows 服务器**：先运行根目录 `安装依赖.bat`，再双击 `deploy/windows/启动中心打印服务.bat`。
+
+### 3. 环境变量与可选安全口令
+
+| 变量名 | 默认值 | 说明 |
+| :--- | :--- | :--- |
+| `PRINT_HUB_CONVERTER_MODE` | `gotenberg` | `gotenberg`（失败直接报错不出纸）/ `local`（本机 COM 或 LibreOffice）/ `auto` |
+| `PRINT_HUB_GOTENBERG_URL` | `http://127.0.0.1:3000` | Gotenberg 服务地址（可指向另一台 Docker 主机） |
+| `PRINT_HUB_GOTENBERG_USER` / `_PASSWORD` | 空 | 跨机部署启用 Gotenberg Basic Auth 时填写 |
+| `PRINT_HUB_API_TOKEN` | 空 | 可选访问口令；设置后非本机调用上传/取消/优先级须携带 `X-Print-Hub-Token` |
+| `PRINT_HUB_ADMIN_TOKEN` | 空 | 可选管理口令；设置后允许远程添加打印机与修改默认打印机 |
+
+### 4. 同事侧 WorkBuddy 接入配置
+
+同事只需导入精简技能包，并在技能根目录将 `remote.example.json` 复制改名为 `remote.json`（填入中心服务器地址），或设置环境变量 `PRINT_HUB_SERVER=http://服务器IP:18828`（如开启了口令则再配置 `PRINT_HUB_API_TOKEN`），即可直接用对话打印 PDF、Word、Excel、PPT、TXT、Markdown、HTML 与图片，**零本地依赖**。
+
+---
+
+## WorkBuddy 首次使用（本机独立运行模式）
 
 ### Windows 首次配置
 
-再次打开管理台时优先复用正在运行的后台。首次缺依赖时，管理员可在 PowerShell 中按需设置 `PRINT_HUB_PIP_INDEX_URL` 或 `PRINT_HUB_WHEEL_DIR`，再运行 `powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1 --install-only`。若公司允许直连且已确认官方源可用，可将源指定为 `https://pypi.org/simple/`。离线目录需要适配 Windows、当前 Python 及 CPU 架构，并包含 `pypdf`、`Pillow`、`PyMuPDF`及其依赖。设置离线目录后会优先从本地安装。
+再次打开管理台时优先复用正在运行的后台。首次缺依赖时，管理员可在 PowerShell 中按需设置 `PRINT_HUB_PIP_INDEX_URL` 或 `PRINT_HUB_WHEEL_DIR`，再运行 `powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1 --install-only`。若公司允许直连且已确认官方源可用，可将源指定为 `https://pypi.org/simple/`。离线目录需要适配 Windows、当前 Python 及 CPU 架构，并包含 `pypdf`、`Pillow`、`PyMuPDF`、`pywin32` 及其依赖。设置离线目录后会优先从本地安装。
 
 ### Mac 首次配置
 
-Word 和 Excel 由内网转换服务生成 PDF。导入技能后说「启动打印后台」。管理员配置服务后，可点击「重新检测」，分别查看 Word 和 Excel 的结果。
+Apple 芯片 Mac 先把 `LibreOffice_26.8.2_MacOS_aarch64.dmg` 中的应用安装到「应用程序」。导入技能后说「启动打印后台」。Word 和 Excel 会分别显示转换检查结果。手动安装后，在原页面点击「重新检测」即可保留已选文件和打印设置。
 
 技能先复用已配置的 Python 依赖。公司网络限制下载时，管理员可在实际安装目录一次性运行以下任一命令。离线目录须位于技能目录之外，包含匹配 Mac 架构和 Python 版本的 `pypdf`、`Pillow`、`PyMuPDF` 及其所需 wheel。
 
@@ -21,7 +65,7 @@ PRINT_HUB_PIP_INDEX_URL="https://pypi.example.internal/simple/" /bin/zsh ./scrip
 
 两者同时设置时优先使用离线目录。未设置时沿用现有 pip 配置。配置完成后，WorkBuddy 会复用同一安装目录的 `.venv`。
 
-导入后说“打开打印后台”。技能会在实际安装目录配置 `.venv`，然后打开本机网页。管理员配置 Office 转换服务后，可在管理台分别验证 Word 和 Excel。需要手动运行时，在技能目录执行对应命令：
+导入后说“打开打印后台”。技能会在实际安装目录配置 `.venv`，然后打开本机网页。Apple 芯片 Mac 手动安装 LibreOffice 26.8.2。管理台在后台分别验证 Word 和 Excel 转换。需要手动运行时，在技能目录执行对应命令：
 
 ```powershell
 powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1
@@ -31,7 +75,7 @@ powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1
 /bin/zsh ./scripts/bootstrap-mac.sh
 ```
 
-自动配置可使用已有 winget 或 Homebrew。遇到系统安装确认时按系统提示操作。用 `--no-browser` 启动后台，用 `--install-only` 只配置环境。端口冲突时可加 `--port 18829`。
+自动配置可使用已有 winget 或 Homebrew。遇到系统安装确认时按系统提示操作。Mac 的 Word／Excel 直传需要 LibreOffice，Windows 需要 Office／WPS 的转换组件。安装暂未完成时可先导出 PDF。Mac 可用 `--office-status` 查询当前结果。后台启动时按需检查一次，网页轮询和提交只读状态。需要复检或仅用 CLI 且尚无检查结果时，先运行 `/bin/zsh ./scripts/bootstrap-mac.sh --retry-office`，对应格式通过后再提交。用 `--no-browser` 只启动服务，用 `--install-only` 只配置环境。端口冲突时可加 `--port 18829`。
 
 在「打印设备」点击「设为默认」，或在 WorkBuddy 说“把 28 楼工作区设为默认打印机”，即可为当前技能安装保存默认设备。下次打开网页或未指定设备打印时使用该默认值。右侧快捷打印可在「更多设置」填写份数，独立新建打印页直接显示，默认 1 份。
 
@@ -40,7 +84,7 @@ powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1
 1. **完整解压 ZIP**，不要在压缩包预览窗口里直接运行。将里面的 `enterprise-printer-hub` 文件夹放到 `%USERPROFILE%\.workbuddy\skills\` 下。最终路径应是 `%USERPROFILE%\.workbuddy\skills\enterprise-printer-hub\SKILL.md`，避免重复套两层同名文件夹。若 WorkBuddy 使用自定义技能目录，以实际目录为准。
 2. 按上面的 WorkBuddy 首次使用流程配置。手动安装时可用 Python 3.9+，双击 `安装依赖.bat` 创建技能自己的 `.venv`。首次下载依赖需要联网。
 3. 刷新 WorkBuddy 的技能列表或重新打开 WorkBuddy，确认发现 `enterprise-printer-hub`。在对话中说“查看公司打印机列表”“现在谁在打印？”即可调用。
-4. Word 和 Excel 需要打印后台能访问管理员配置的内网转换服务。PDF 在本机处理，图片转换使用 Pillow。
+4. 打印 Word / Excel 还需要这台服务电脑安装可用的 Microsoft Word / Excel 或支持 COM 的 WPS；仅安装 pywin32 不包含 Office。PDF 不需要 Office，图片转换使用 Pillow。
 5. 连接可访问打印机的公司网络。包内 `config.json` 保留 27F 总部佳能 `10.1.36.228` 的配置；异地或不同网络需要修改设备 IP / 配置。
 
 这是需要 Python 的源码技能包，不是免安装 EXE。首次调用按需配置 Python 环境，打印使用现有 IPP 流程。
@@ -109,21 +153,7 @@ python3 -m venv .venv
 .venv/bin/python scripts/web_server.py --host 127.0.0.1
 ```
 
-### 配置 Office 转换服务
-
-管理员在实际技能目录创建 `data/office-converter.json`，并限制该文件只允许运行技能的账号和管理员读取。以下是配置示例，凭据由管理员单独分发。
-
-```json
-{
-  "url": "https://convert.intra.example/office-converter",
-  "username": "print-hub",
-  "password": "REPLACE_WITH_SERVER_PASSWORD"
-}
-```
-
-`url` 是 HTTPS 入口前缀。客户端会追加 `/forms/libreoffice/convert`。如果企业 CA 尚未由该 Python 环境信任，添加可选的 `ca_file`，指向 PEM 文件的绝对路径或相对技能 `data` 目录的路径。服务端部署见 [内网转换服务部署](deploy/office-converter/README.md)。
-
-用技能目录的 Python 执行 `scripts/bootstrap.py --retry-office`，或在本机网页控制台点击「重新检测」，分别检查 Word 和 Excel。普通状态查询使用 `--office-status`。自检只发送内置合成样例。打印 Office 文件时，原文件经 HTTPS 发送至企业转换服务器，单个文件最大 25 MiB。打印后台校验 PDF 页数和中文缺字后再投递。如果转换失败，可在本机导出 PDF 后重新提交。
+Office 转 PDF 使用 LibreOffice：从 PATH 查找 `soffice` / `libreoffice`，也支持 Mac 的 `/Applications/LibreOffice.app` 与用户 Applications 目录。每次转换使用独立配置和临时目录，90 秒超时，并校验生成的 PDF。Mac 将转换临时文件放在本机 `/private/tmp`，校验通过后在输出目录内发布 PDF，技能目录或原文件可位于外接盘。Mac 转换子进程使用独立 Fontconfig 配置读取当前系统字体及 AssetsV2 中文字体，不修改系统字体设置；检查 PDF 中可见中文的缺失字形，发现缺字会阻止投递并提示重新导出。缺少转换器时可以先导出 PDF。Mac 页面支持系统字体、Finder 拖放、分屏窗口和窄屏卡片布局。
 
 ## 当前功能边界
 
@@ -138,13 +168,13 @@ python3 -m venv .venv
 
 ZIP 保留代码、UI、技能入口、配置、Windows／Mac 脚本和依赖声明，首次运行初始化本机 SQLite 队列（旧 JSON 存在时先迁移）；不包含本机上传文件、历史任务、虚拟环境、缓存、开发记忆或机器绑定路径。
 
-0.2.1 在本机隔离 Docker 环境通过 HTTPS 验证了四种 Office 格式、中文显示、Excel 分页、CLI 和网页上传。投递使用模拟打印机。目标内网部署、WorkBuddy 导入和实际出纸需要在目标环境验收。此前的多页彩色和灰度 PWG Raster 已用 macOS 原生 CUPS 解码器独立校验，并在总部设备上通过 Validate-Job 预检。
+已验证 Office 转换、状态回归和多页彩色 / 灰度 PWG Raster；输出使用 macOS 原生 CUPS 解码器独立校验。针对总部设备执行了不创建打印作业的 Validate-Job，确认新格式和参数通过预检。Windows COM、BAT 执行及 WorkBuddy 自动发现需在同事的 Windows 环境验收；尚未重新执行实际出纸测试。
 
 PWG Raster 格式实现依据 [CUPS Raster 规范](https://openprinting.github.io/cups/libcups/spec-raster.html)，PDF 页面渲染使用 [PyMuPDF get_pixmap](https://pymupdf.readthedocs.io/en/latest/page.html#Page.get_pixmap)。
 
 ### 历史研发记录 v2.6.0 验证范围
 
-原有 30 项回归加新增配置、来源限制、异步检测和重复保存测试共 56 项通过。隔离浏览器验收覆盖检测 / 保存 / 立即刷新、保留原选择与表单、重复设备、连接失败、Esc 和 390px 全屏弹窗；正式配置和队列保持原样。Windows 文件锁、BAT、Chrome/Edge、WorkBuddy 发现，以及 Safari 实机验收尚未执行。未自动添加真实设备或发送打印任务。
+原有 30 项回归加新增配置、来源限制、异步检测和重复保存测试共 56 项通过。隔离浏览器验收覆盖检测 / 保存 / 立即刷新、保留原选择与表单、重复设备、连接失败、Esc 和 390px 全屏弹窗；正式配置和队列保持原样。Windows 文件锁、BAT、Office COM、Chrome/Edge、WorkBuddy 发现，以及 Safari 实机验收尚未执行。未自动添加真实设备或发送打印任务。
 
 ### 历史研发记录 v2.6.1 HP 兼容修复
 
@@ -170,7 +200,7 @@ PWG Raster 格式实现依据 [CUPS Raster 规范](https://openprinting.github.i
 
 ### 本次验证方式
 
-运行 `python -m unittest discover -s tests -q`；并发与中断测试使用临时数据库和模拟传输，不访问真实打印机。可选浏览器回归见 `tests/browser_smoke.py`（需安装开发依赖 playwright，使用本机 Edge）；运行时采用隔离 HTTP 服务与模拟设备，不启动真实消费器。目标内网转换服务、WorkBuddy 调用及实际出纸需在目标环境人工验收。
+运行 `python -m unittest discover -s tests -q`；并发与中断测试使用临时数据库和模拟传输，不访问真实打印机。可选浏览器回归见 `tests/browser_smoke.py`（需安装开发依赖 playwright，使用本机 Edge）；运行时采用隔离 HTTP 服务与模拟设备，不启动真实消费器。真实 Office / WPS 转换、WorkBuddy 调用及实际出纸需在目标环境人工验收。
 
 2026-11-02 本次 Windows 验证：75 项测试中 73 项通过、2 项 macOS 专用集成测试跳过；本机 Edge 无头浏览器回归通过，覆盖历史分页筛选、阅读位置保留、响应丢失后防重、刷新页面后的原请求恢复与 390px 窄屏。跨进程队列写入、Windows 文件锁、单次投递及进程中断恢复使用隔离数据验证。未发送真实打印任务。
 
@@ -186,7 +216,7 @@ PWG Raster 格式实现依据 [CUPS Raster 规范](https://openprinting.github.i
 
 ## 正式导入包
 
-使用 `python tools/build_skill_package.py` 构建 `dist/enterprise-printer-hub-0.2.2-import.zip`。构建包含运行必需文件与说明，排除历史 EXE、`.venv`、`.git`、缓存、测试和用户数据。用户导入后，首次调用在本机配置依赖。
+使用 `python tools/build_skill_package.py` 构建 `dist/enterprise-printer-hub-0.1.5-import.zip`。构建包含运行必需文件与说明，排除历史 EXE、`.venv`、`.git`、缓存、测试和用户数据。用户导入后，首次调用在本机配置依赖。
 
 已有用户务必先将配置和整个 data 目录备份到技能目录以外，避免客户端同名导入覆盖旧数据。具体步骤见 [导入安装说明](导入安装说明.md)。干净包仅修正交付冗余，不等于已经通过 WorkBuddy 安全检测；若检测服务仍返回异常，需由客户端 / 服务侧继续排查。本次未修改运行功能或安全检测设置。
 
