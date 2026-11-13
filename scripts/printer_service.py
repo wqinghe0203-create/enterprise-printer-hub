@@ -5,6 +5,7 @@
 """
 
 import os
+import re
 import sys
 import tempfile
 import time
@@ -347,6 +348,8 @@ class PrinterService:
         if not sides:
             raise ValueError('不支持的单双面选项')
         supported_sides = capabilities.get('sides-supported', ['one-sided'])
+        if isinstance(supported_sides, str):
+            supported_sides = [supported_sides]
         if sides not in supported_sides:
             raise RuntimeError('目标设备不支持所选单双面模式，请调整后提交')
         copies = int(copies)
@@ -380,12 +383,22 @@ class PrinterService:
                 raise RuntimeError('设备不支持 PDF 或兼容的 PWG Raster；未发送文件，请使用系统驱动打印')
             # Validate-Job does not create or print a job.
             trace.update(stage='validate_job', document_format=doc_format, payload_bytes=Path(output).stat().st_size)
-            validation = client.validate_job(doc_format, sides=sides, copies=copies)
+            print_settings = {'sides': sides, 'copies': copies}
+            validation = client.validate_job(doc_format, **print_settings)
+            default_media = capabilities.get('media-default')
+            # Some devices reject duplex until their default paper size is explicit.
+            if (sides != 'one-sided' and 'sides' in validation.get('unsupported_attributes', {})
+                    and isinstance(default_media, str) and re.fullmatch(r'[a-z0-9][a-z0-9._-]{0,254}', default_media)):
+                print_settings['media'] = default_media
+                trace['media'] = default_media
+                validation = client.validate_job(doc_format, **print_settings)
             trace['validate_ipp_status'] = validation.get('status_code')
-            if not validation.get('success') or validation.get('status_code') != 0:
-                unsupported = validation.get('unsupported_attributes', {})
+            unsupported = validation.get('unsupported_attributes', {})
+            if not validation.get('success') or validation.get('status_code') != 0 or unsupported:
                 if 'sides' in unsupported:
                     detail = '设备不接受所选单双面设置，请选择单面或检查设备双面配置'
+                elif 'media' in unsupported:
+                    detail = '设备不接受当前纸张设置，请检查纸盒和双面纸张配置'
                 elif 'copies' in unsupported:
                     detail = '设备不接受所选份数，请调整份数'
                 elif 'document-format' in unsupported:
@@ -400,7 +413,7 @@ class PrinterService:
                 before_send({**trace, 'stage': 'print_job'})
             trace['stage'] = 'print_job'
             result = client.print_raw_payload(payload, doc_format=doc_format,
-                                              job_name=job_name, user=user, sides=sides, copies=copies)
+                                              job_name=job_name, user=user, **print_settings)
             result['document_format'] = doc_format
             return result
 

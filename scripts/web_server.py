@@ -123,9 +123,26 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
         except (ValueError, TypeError):
             return False
 
+    def _registration_origin(self):
+        return os.environ.get('PRINT_HUB_REGISTRATION_ORIGIN', '').strip().rstrip('/')
+
+    def _registration_allowed(self, mutation=False):
+        if self._management_allowed(mutation):
+            return True
+        registration_origin = self._registration_origin()
+        if not registration_origin:
+            return False
+        origin = self.headers.get('Origin')
+        if mutation or origin is not None:
+            return origin == registration_origin
+        # Same-origin GETs usually omit Origin. Reject cross-site browser reads.
+        return self.headers.get('Sec-Fetch-Site') in (None, 'same-origin')
+
     def _registration_request(self, path, mutation=False):
-        if not self._management_allowed(mutation):
-            self._send_json({'success':False,'error':'请在服务电脑上使用 localhost 或 127.0.0.1 打开控制台添加设备'}, 403)
+        if not self._require_api_auth():
+            return
+        if not self._registration_allowed(mutation):
+            self._send_json({'success':False,'error':'请从允许添加设备的后台地址打开打印设备页面，或使用管理员令牌'}, 403)
             return
         try:
             if mutation:
@@ -217,6 +234,7 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             printer_id = query.get("printer_id", [None])[0]
             data = svc.get_full_dashboard_data(selected_printer_id=printer_id)
             data['printer_management_allowed'] = self._management_allowed()
+            data['printer_registration_origin'] = self._registration_origin() if self._registration_allowed() else ''
             data["host_lan_ip"] = get_host_lan_ip()
             data["web_ui_port"] = self.server.server_port
             self._send_json(data)

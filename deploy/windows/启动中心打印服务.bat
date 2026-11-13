@@ -5,6 +5,7 @@ cd /d "%~dp0..\.."
 
 if not defined PRINT_HUB_CONVERTER_MODE set "PRINT_HUB_CONVERTER_MODE=gotenberg"
 if not defined PRINT_HUB_GOTENBERG_URL set "PRINT_HUB_GOTENBERG_URL=http://127.0.0.1:3000"
+if not defined PRINT_HUB_REGISTRATION_ORIGIN set "PRINT_HUB_REGISTRATION_ORIGIN=https://10.0.249.200:8086"
 
 set "HUB_PYTHON="
 if exist ".venv\Scripts\python.exe" set "HUB_PYTHON=.venv\Scripts\python.exe"

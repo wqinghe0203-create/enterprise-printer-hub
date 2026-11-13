@@ -39,8 +39,11 @@ curl http://127.0.0.1:3000/health
 | `PRINT_HUB_GOTENBERG_USER` / `_PASSWORD` | 空 | 跨机部署启用 Gotenberg Basic Auth 时填写 |
 | `PRINT_HUB_API_TOKEN` | 空 | 可选访问口令；设置后非本机调用上传/取消/优先级须携带 `X-Print-Hub-Token` |
 | `PRINT_HUB_ADMIN_TOKEN` | 空 | 可选管理口令；设置后允许远程添加打印机与修改默认打印机 |
+| `PRINT_HUB_REGISTRATION_ORIGIN` | 空 | 中心后台允许普通访问者添加打印机的网页来源，例如 `https://10.0.249.200:8086`，填写浏览器地址的协议、主机和端口 |
 
 ### 4. 同事侧 WorkBuddy 接入配置
+
+员工使用 `enterprise-print` 时，首次在同一张卡中选择默认打印机、单双面、优先级和提交人。可以直接打印 WorkBuddy 生成的 DOCX。技能保存设置后会打开中心后台，系统默认浏览器中同一后台的标签页会同步并回显个人设置。
 
 同事只需导入精简技能包，并在技能根目录将 `remote.example.json` 复制改名为 `remote.json`（填入中心服务器地址），或设置环境变量 `PRINT_HUB_SERVER=http://服务器IP:18828`（如开启了口令则再配置 `PRINT_HUB_API_TOKEN`），即可直接用对话打印 PDF、Word、Excel、PPT、TXT、Markdown、HTML 与图片，**零本地依赖**。
 
@@ -99,13 +102,15 @@ powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1
 
 ## 添加网络打印机
 
-在**运行服务的电脑**打开 `http://127.0.0.1:18828/#devices`，点击“添加打印机”：
+中心后台配置 `PRINT_HUB_REGISTRATION_ORIGIN=https://10.0.249.200:8086` 后，访问该地址的用户可在「打印设备」点击「添加打印机」。本机部署也可从服务电脑打开 `http://127.0.0.1:18828/#devices`。
+
+手动用 `nohup` 启动时，在原启动命令前加 `PRINT_HUB_REGISTRATION_ORIGIN=https://10.0.249.200:8086` 并重启 Python 服务。刷新后若按钮仍为灰色，检查中心后台 `/api/dashboard` 返回的 `printer_registration_origin` 是否与浏览器地址的来源相同。
 
 1. 输入公司私网 IPv4 地址；高级设置可修改 IPP 端口（默认 631）和路径（默认 /ipp/print）。
 2. 点击“检测设备”。只读取型号、文档格式、色彩、单双面和份数能力，不打印测试页；后台检测单次连接超时 6 秒，不占用网页主请求处理。
 3. 显示“可以接入”后，填写名称与位置，点击“确认保存”。新设备立即出现在设备列表和上传目标中，不重启、不改变默认设备或现有表单。
 
-第一版只添加与现有 PDF / PWG Raster 链路兼容的网络设备。连接失败、不兼容、重复设备不会保存；不包含自动发现、USB、编辑、删除或更改默认设备。Web 添加接口只允许本机同源访问，手机和同事通过局域网访问时需要到服务电脑添加。
+添加功能支持与现有 PDF / PWG Raster 链路兼容的网络设备。连接失败、不兼容或重复的设备不会保存。接口接受配置的中心网页来源、本机同源访问及现有管理员令牌。全局默认设备仍由管理接口单独设置。
 
 WorkBuddy 可运行 `scripts/cli.py add-printer --ip 10.1.36.229` 检测；明确新增时加 `--save --name "研发区打印机" --location "26F"`，支持 `--ipp-port`、`--ipp-path`。检测与保存共用同一逻辑，禁止默认测试出纸。
 
@@ -158,7 +163,7 @@ Office 转 PDF 使用 LibreOffice：从 PATH 查找 `soffice` / `libreoffice`，
 ## 当前功能边界
 
 - 优先级针对本机虚拟队列，不抢占已发送的硬件作业；网页运行时持续后台消费，同一设备串行转换与发送；CLI 仅在调用期间调度，不安装后台系统服务。
-- 双面和份数通过 IPP job-attributes 发送，并由 Validate-Job 预检。PWG Raster 支持 8 位 sRGB / sGray、72–600 dpi 的方形分辨率；双面背页变换目前支持 normal，其他设备模式明确拒绝而不冒险发送。
+- 双面和份数通过 IPP 作业属性发送，并由 Validate-Job 预检。设备在双面预检中拒绝 `sides` 时，后台用设备报告的默认纸张再预检一次。通过后按相同参数投递。PWG Raster 支持 8 位 sRGB / sGray、72–600 dpi 的方形分辨率及 `normal` 双面背页变换。
 - 自动协商 PDF 或 PWG Raster。设备未声明 PDF 支持时，先用 PyMuPDF 光栅化，不再以 application/octet-stream 发送 PDF。
 - 作业接收后为“已提交”，硬件 job-state=9 才记为完成；终止和取消同步回本地。超时 / 缺失响应显示“发送结果未知”，禁止自动重投；旧版本无硬件确认的“已完成”记录显示“出纸未核实”。
 - 页面显示具体硬件作业失败原因，以及缺纸 / 墨粉等设备告警。单纯的马达响应或接收提示不能证明纸张输出。

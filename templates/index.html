@@ -469,8 +469,7 @@
           <div class="form-group">
             <label class="form-label" for="duplex-select">单双面</label>
             <select id="duplex-select" class="form-control">
-              <option value="auto" selected>使用打印机默认设置</option>
-              <option value="simplex">单面</option>
+              <option value="simplex" selected>单面</option>
               <option value="duplex_long">双面 · 长边翻页</option>
               <option value="duplex_short">双面 · 短边翻页</option>
             </select>
@@ -607,6 +606,7 @@
   }
   let activePrinterId = null;
   let deviceManagementAllowed = false;
+  let printerRegistrationAllowed = false;
   let defaultSaveBusy = false;
   let defaultSaveVersion = 0;
   let selectionRequired = false;
@@ -903,7 +903,26 @@
     updateFileUI();
   }
   const LOCAL_DEFAULT_KEY = 'print-hub-default-printer';
+  const WORKBUDDY_PREFERENCES_KEY = 'print-hub-workbuddy-preferences';
+  const REMEMBERED_USER_KEY = 'print-hub-user';
+  function validWorkBuddyDefaults(settings) {
+    return settings && typeof settings.printer_id === 'string' && settings.printer_id.trim() === settings.printer_id &&
+      settings.printer_id.length > 0 && ['simplex','duplex_long','duplex_short'].includes(settings.duplex) &&
+      [50,80,100].includes(settings.priority) && !/[\p{C}\p{Zl}\p{Zp}]/u.test(settings.printer_id);
+  }
+  function loadWorkBuddyPreferences() {
+    try {
+      const settings=JSON.parse(localStorage.getItem(WORKBUDDY_PREFERENCES_KEY));
+      return validWorkBuddyDefaults(settings) ? settings : null;
+    } catch (_) { return null; }
+  }
+  let workBuddyPreferences = loadWorkBuddyPreferences();
+  function storeWorkBuddyPreferences() {
+    try { localStorage.setItem(WORKBUDDY_PREFERENCES_KEY,JSON.stringify(workBuddyPreferences)); }
+    catch (_) { notify('浏览器无法保存打印设置，本次打开仍可使用。',true); }
+  }
   function getLocalDefaultPrinterId() {
+    if (workBuddyPreferences) return workBuddyPreferences.printer_id;
     try { return localStorage.getItem(LOCAL_DEFAULT_KEY) || ''; } catch (_) { return ''; }
   }
   function setLocalDefaultPrinterId(id) {
@@ -914,11 +933,14 @@
   }
   function getEffectiveDefaultPrinterId(cluster = printerCatalog) {
     const serverDefault = (cluster.find(p => p.is_default) || {}).id || '';
-    if (!deviceManagementAllowed) {
+    if (workBuddyPreferences || !deviceManagementAllowed) {
       const localId = getLocalDefaultPrinterId();
       if (localId && cluster.some(p => p.id === localId)) return localId;
     }
     return serverDefault;
+  }
+  function defaultPrinterLabel(printer) {
+    return workBuddyPreferences?.printer_id === printer.id || (!deviceManagementAllowed && !printer.is_default) ? '个人默认' : '默认';
   }
   function deviceLabel(printer) {
     return printer ? `${printer.name}${printer.location ? ' ('+printer.location+')' : ''}` : '请选择设备';
@@ -932,7 +954,7 @@
       const printing = isPrinterPrinting(p);
       const stLabel = !p.online ? '离线' : (stopped ? '暂停/故障' : (printing ? '正在打印' : '在线'));
       const isEffDef = p.id === effectiveDefaultId;
-      const defTag = isEffDef ? ((!deviceManagementAllowed && !p.is_default) ? ' · 本机默认' : ' · 默认') : '';
+      const defTag = isEffDef ? ' · ' + defaultPrinterLabel(p) : '';
       return `<option value="${escapeHTML(p.id)}">${escapeHTML(deviceLabel(p))} · ${stLabel}${defTag}</option>`;
     }).join('');
     if(markup!==selectorMarkup) {select.innerHTML=markup;selectorMarkup=markup;}
@@ -941,7 +963,7 @@
     const activePrinterObj = cluster.find(p => p.id === activePrinterId);
     const uploadDefBadge = document.getElementById('upload-target-default');
     uploadDefBadge.hidden = !activeIsDefault;
-    uploadDefBadge.textContent = (!deviceManagementAllowed && activeIsDefault && !activePrinterObj?.is_default) ? '本机默认' : '默认';
+    uploadDefBadge.textContent = activeIsDefault && activePrinterObj ? defaultPrinterLabel(activePrinterObj) : '';
     const topDefBtn = document.getElementById('top-set-default-btn');
     if (topDefBtn) {
       const hasActive = !!activePrinterObj;
@@ -960,8 +982,8 @@
       const isEffDef = p.id === effectiveDefaultId;
       let defBadge = '';
       if (isEffDef) {
-        defBadge = `<span class="badge status-info">${(!deviceManagementAllowed && !p.is_default) ? '本机默认' : '默认'}</span>`;
-      } else if (p.is_default && !deviceManagementAllowed) {
+        defBadge = `<span class="badge status-info">${defaultPrinterLabel(p)}</span>`;
+      } else if (p.is_default && (workBuddyPreferences || !deviceManagementAllowed)) {
         defBadge = '<span class="badge status-muted">全局默认</span>';
       }
       return `<div class="device-row" aria-current="${p.id===activePrinterId}">
@@ -984,6 +1006,14 @@
   }
   async function saveDefaultPrinter(id) {
     if(defaultSaveBusy || !id || !printerCatalog.some(p=>p.id===id))return;
+    if (workBuddyPreferences) {
+      workBuddyPreferences={...workBuddyPreferences,printer_id:id};
+      storeWorkBuddyPreferences();
+      defaultSaveVersion++;
+      renderDeviceCatalog(printerCatalog);
+      notify('已在本浏览器设为个人默认打印机。');
+      return;
+    }
     if(!deviceManagementAllowed) {
       const target = printerCatalog.find(p => p.id === id);
       if (target?.is_default) {
@@ -1053,12 +1083,13 @@
       const url = requestedPrinter ? `/api/dashboard?printer_id=${encodeURIComponent(requestedPrinter)}` : '/api/dashboard';
       const data = await requestJSON(url, {signal:dashboardController.signal});
       if (version!==selectionVersion || defaultVersion!==defaultSaveVersion) return;
+      if (workBuddyPreferences && localDefault && data.selected_printer_id!==localDefault) selectionRequired=true;
       renderDashboard(data);
       document.getElementById('sync-status').textContent = '实时同步 · ' + new Date().toLocaleTimeString('zh-CN', {hour12:false});
       document.getElementById('sync-dot').style.background = 'var(--success)';
     } catch (err) {
       if(version!==selectionVersion || defaultVersion!==defaultSaveVersion) return;
-      if(!activePrinterId && localDefault && err.message.includes('未找到指定打印机')) {
+      if(!activePrinterId && localDefault && !workBuddyPreferences && err.message.includes('未找到指定打印机')) {
         setLocalDefaultPrinterId('');
         retryWithoutLocalDefault = true;
         return;
@@ -1074,6 +1105,10 @@
           if(!cluster.some(p=>p.id===requestedPrinter)) {
             activePrinterId=null;selectionRequired=true;
             renderDeviceCatalog(cluster);
+            if (workBuddyPreferences && localDefault) {
+              // Read the dashboard once without a target to recover registration permission.
+              retryWithoutLocalDefault = true;
+            }
             clearSelectedData('上次选择的设备已不存在，请在顶部重新选择打印设备。',true);
             return;
           }
@@ -1095,10 +1130,25 @@
     }
     if(!activePrinterId && !selectionRequired)activePrinterId=data.selected_printer_id;
     deviceManagementAllowed=!!data.printer_management_allowed;
+    printerRegistrationAllowed=deviceManagementAllowed || data.printer_registration_origin===location.origin;
     renderDeviceCatalog(cluster);
-    document.getElementById('add-printer-btn').disabled = !data.printer_management_allowed;
-    document.getElementById('add-printer-hint').dataset.management = data.printer_management_allowed ? 'local' : 'remote';
-    document.getElementById('add-printer-hint').textContent = data.printer_management_allowed ? '选择设备，统一查看状态与提交打印' : '添加设备请在服务电脑打开 localhost 控制台';
+    document.getElementById('add-printer-btn').disabled = !printerRegistrationAllowed;
+    const registrationHint=document.getElementById('add-printer-hint');
+    registrationHint.dataset.management = printerRegistrationAllowed ? 'local' : 'remote';
+    registrationHint.textContent = '';
+    if (!printerRegistrationAllowed) {
+      if (data.printer_registration_origin) {
+        try {
+          const url=new URL(data.printer_registration_origin);
+          if (['https:','http:'].includes(url.protocol) && url.origin===data.printer_registration_origin) {
+            const link=document.createElement('a');
+            link.href=url.origin+'/#devices';
+            link.textContent='打开可添加设备的后台';
+            registrationHint.append(link);
+          } else registrationHint.textContent='后台的设备添加地址配置无效';
+        } catch (_) { registrationHint.textContent='后台的设备添加地址配置无效'; }
+      } else registrationHint.textContent='服务器尚未启用网页添加，请联系管理员';
+    }
     if(data.host_lan_ip) {
       document.getElementById('node-ip').textContent=data.host_lan_ip;
       const link=document.getElementById('node-lan-link');link.textContent=`http://${data.host_lan_ip}:${data.web_ui_port||18828}`;link.href=link.textContent;
@@ -1635,12 +1685,65 @@
   renderPreviousSubmissions();
   if(sessionStorage.getItem('print-request')) {showUncertain();document.getElementById('submit-btn').textContent='选择原文件后核查并重试';}
   const userInput=document.getElementById('user-name'),rememberUser=document.getElementById('remember-user');
-  try {const saved=localStorage.getItem('print-hub-user');if(saved){userInput.value=saved;rememberUser.checked=true;}} catch (_) {}
-  if(sessionStorage.getItem('print-request')){const original=JSON.parse(sessionStorage.getItem('print-upload')||'null');if(original?.user)userInput.value=original.user;}
+  try {const saved=localStorage.getItem(REMEMBERED_USER_KEY);if(saved){userInput.value=saved;rememberUser.checked=true;}} catch (_) {}
+  if(!userInput.value && sessionStorage.getItem('print-request')){const original=JSON.parse(sessionStorage.getItem('print-upload')||'null');if(original?.user)userInput.value=original.user;}
   function saveUserPreference() {
-    try {if(rememberUser.checked && userInput.value.trim())localStorage.setItem('print-hub-user',userInput.value.trim());else localStorage.removeItem('print-hub-user');}
-    catch (_){rememberUser.checked=false;notify('浏览器不允许保存姓名，本次仍可填写使用。',true);}
+    try {
+      if(rememberUser.checked && userInput.value.trim())localStorage.setItem(REMEMBERED_USER_KEY,userInput.value.trim());
+      else localStorage.removeItem(REMEMBERED_USER_KEY);
+      return true;
+    } catch (_){rememberUser.checked=false;notify('浏览器不允许保存姓名，本次仍可填写使用。',true);return false;}
   }
+  function applyWorkBuddyDefaults() {
+    if (!workBuddyPreferences) return;
+    document.getElementById('duplex-select').value=workBuddyPreferences.duplex;
+    document.getElementById('prio-select').value=String(workBuddyPreferences.priority);
+  }
+  function refreshWorkBuddyPrinter() {
+    const {printer_id}=workBuddyPreferences;
+    if (printerCatalog.some(p=>p.id===printer_id)) switchPrinter(printer_id);
+    else {
+      activePrinterId=null;selectionRequired=false;selectionVersion++;
+      clearSelectedData('正在读取 WorkBuddy 默认打印机…');
+      dashboardController?.abort();fetchDashboard();
+    }
+    if (printerCatalog.length) renderDeviceCatalog(printerCatalog);
+    updatePrintSummary();
+  }
+  function importWorkBuddyPreferences(refresh=false) {
+    const [view, query]=location.hash.slice(1).split('?',2);
+    const encoded=new URLSearchParams(query).get('workbuddy_preferences');
+    if (encoded===null) return;
+    const knownViews=['overview','devices','queue','history','new-print'];
+    history.replaceState(history.state,'','#'+(knownViews.includes(view) ? view : 'overview'));
+    let settings;
+    try { settings=JSON.parse(encoded); } catch (_) { return; }
+    if (!validWorkBuddyDefaults(settings) || typeof settings.user !== 'string' || !settings.user.trim() ||
+        /[\p{C}\p{Zl}\p{Zp}]/u.test(settings.user)) return;
+    const {printer_id,duplex,priority,user}=settings;
+    workBuddyPreferences={printer_id,duplex,priority};
+    applyWorkBuddyDefaults();
+    userInput.value=user.trim();rememberUser.checked=true;
+    // Save the submitter first, then signal other tabs with a fresh ID even when defaults repeat.
+    if (saveUserPreference()) workBuddyPreferences.syncId=globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    storeWorkBuddyPreferences();
+    if (refresh) refreshWorkBuddyPrinter();
+  }
+  applyWorkBuddyDefaults();
+  importWorkBuddyPreferences();
+  window.addEventListener('storage',event=>{
+    if (event.storageArea!==localStorage || event.key!==WORKBUDDY_PREFERENCES_KEY) return;
+    let previous;
+    try { previous=JSON.parse(event.oldValue); } catch (_) { /* An import can replace invalid saved settings. */ }
+    const incoming=loadWorkBuddyPreferences();
+    if (!incoming?.syncId || incoming.syncId===previous?.syncId || incoming.syncId===workBuddyPreferences?.syncId) return;
+    const user=localStorage.getItem(REMEMBERED_USER_KEY);
+    if (!user) return;
+    workBuddyPreferences=incoming;
+    applyWorkBuddyDefaults();
+    userInput.value=user;rememberUser.checked=true;
+    refreshWorkBuddyPrinter();
+  });
   userInput.addEventListener('input',saveUserPreference);rememberUser.addEventListener('change',saveUserPreference);
   document.getElementById('clear-user').onclick=()=>{userInput.value='';rememberUser.checked=false;saveUserPreference();userInput.focus();};
   document.getElementById('duplex-select').addEventListener('change',updatePrintSummary);
@@ -1669,8 +1772,8 @@
     const target=link.hash.slice(1);
     if(['overview','devices','queue','history','new-print'].includes(target)){event.preventDefault();routeTo(target);}
   }));
-  window.addEventListener('popstate',()=>{applyView(location.hash.slice(1));fetchHistory();});
-  window.addEventListener('hashchange',()=>applyView(location.hash.slice(1)));
+  window.addEventListener('popstate',()=>{importWorkBuddyPreferences(true);applyView(location.hash.slice(1));fetchHistory();});
+  window.addEventListener('hashchange',()=>{importWorkBuddyPreferences(true);applyView(location.hash.slice(1));});
   applyView(location.hash.slice(1));
   window.addEventListener('load',()=>window.scrollTo({top:0,behavior:'instant'}));
   document.addEventListener('keydown', e => {
@@ -1832,7 +1935,7 @@
     result.innerHTML=`<strong>${escapeHTML(title)}</strong><p>${escapeHTML(text)}</p>`;
   }
   function openAddPrinter() {
-    if(!latestDashboard?.printer_management_allowed){notify('请在服务电脑使用 localhost 控制台添加设备',true);return;}
+    if(!printerRegistrationAllowed){notify('请通过允许添加设备的后台地址访问',true);return;}
     addPrinterTrigger=document.activeElement;
     document.getElementById('add-printer-modal').style.display='flex';
     document.body.style.overflow='hidden';
@@ -1898,11 +2001,18 @@
     document.querySelectorAll('#add-printer-form input').forEach(input=>input.disabled=true);
     document.getElementById('detect-printer-btn').disabled=true;
     try {
-      await requestJSON('/api/printers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({probe_id:printerProbeId,name:name.value.trim(),location:document.getElementById('add-printer-location').value.trim()})});
+      const result=await requestJSON('/api/printers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({probe_id:printerProbeId,name:name.value.trim(),location:document.getElementById('add-printer-location').value.trim()})});
+      if (!printerCatalog.some(p=>p.id===result.printer.id)) {
+        const catalog=[...printerCatalog,{...result.printer,online:true,state_code:3}];
+        if (latestDashboard) latestDashboard.cluster=catalog;
+        renderDeviceCatalog(catalog);
+      }
+      // Discard any in-flight dashboard fetched before registration completed.
+      defaultSaveVersion++;
       printerSaving=false;
       closeAddPrinter();
       document.getElementById('add-printer-form').reset();invalidatePrinterProbe();
-      notify('打印机已添加；当前设备和默认打印机保持不变');
+      notify('打印机已添加');
       fetchDashboard();
     } catch(error){probeMessage('保存失败',error.message);save.disabled=false;}
     finally {printerSaving=false;save.textContent='确认保存';document.querySelectorAll('#add-printer-form input').forEach(input=>input.disabled=false);document.getElementById('detect-printer-btn').disabled=false;}

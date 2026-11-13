@@ -272,6 +272,7 @@ class IPPClient:
             (TAG_KEYWORD, "requested-attributes", "pwg-raster-document-sheet-back"),
             (TAG_KEYWORD, "requested-attributes", "sides-supported"),
             (TAG_KEYWORD, "requested-attributes", "sides-default"),
+            (TAG_KEYWORD, "requested-attributes", "media-default"),
             (TAG_KEYWORD, "requested-attributes", "copies-supported"),
         ]
         try:
@@ -392,15 +393,23 @@ class IPPClient:
         except Exception as exc:
             return {'success': False, 'error': str(exc)}
 
-    def validate_job(self, doc_format: str, sides='one-sided', copies=1) -> Dict[str, Any]:
-        attrs = [(TAG_MIME, 'document-format', doc_format)]
+    @staticmethod
+    def _print_attributes(doc_format, sides, copies, media):
+        attrs = [(TAG_MIME, 'document-format', doc_format), (TAG_BOOL, 'ipp-attribute-fidelity', True)]
         job_attrs = [(TAG_KEYWORD, 'sides', sides), (TAG_INT, 'copies', copies)]
+        if media is not None:
+            job_attrs.append((TAG_KEYWORD, 'media', media))
+        return attrs, job_attrs
+
+    def validate_job(self, doc_format: str, sides='one-sided', copies=1, media=None) -> Dict[str, Any]:
+        attrs, job_attrs = self._print_attributes(doc_format, sides, copies, media)
         return self.parse_attributes(self._send_ipp(self._build_request(0x0004, attrs, job_attrs)))
 
     def print_raw_payload(self, payload: bytes, doc_format: str = 'application/octet-stream',
-                          job_name: str = 'Doc', user: str = 'User', sides='one-sided', copies=1) -> Dict[str, Any]:
-        attrs = [(TAG_NAME, 'job-name', job_name), (TAG_NAME, 'requesting-user-name', user), (TAG_MIME, 'document-format', doc_format)]
-        job_attrs = [(TAG_KEYWORD, 'sides', sides), (TAG_INT, 'copies', copies)]
+                          job_name: str = 'Doc', user: str = 'User', sides='one-sided', copies=1,
+                          media=None) -> Dict[str, Any]:
+        attrs, job_attrs = self._print_attributes(doc_format, sides, copies, media)
+        attrs = [(TAG_NAME, 'requesting-user-name', user), (TAG_NAME, 'job-name', job_name), *attrs]
         try:
             response = self._send_ipp(self._build_request(0x0002, attrs, job_attrs) + payload, timeout=60.0)
             parsed = self.parse_attributes(response)
