@@ -17,6 +17,14 @@ from .queue_scheduler import QueueScheduler
 from .doc_converter import prepare_printable_file
 from .pwg_raster import pdf_to_pwg
 
+def _normalize_reasons(raw: Any) -> List[str]:
+    """将 IPP 返回的单个字符串或列表形式的 state-reasons 统一规范为非空字符串列表（过滤 'none'）。"""
+    if not raw:
+        return []
+    items = [raw] if isinstance(raw, str) else list(raw)
+    return [str(item).strip() for item in items if item and str(item).strip().lower() != "none"]
+
+
 class PrinterService:
     def __init__(self):
         self.scheduler = QueueScheduler()
@@ -42,7 +50,9 @@ class PrinterService:
                 "ip": p.get("ip", ""),
                 "gateway": p.get("gateway", ""),
                 "online": hw.get("online", False),
+                "state_code": hw.get("state_code", 3 if hw.get("online") else 0),
                 "state_desc": hw.get("state_desc", "未知"),
+                "reasons": _normalize_reasons(hw.get("reasons")),
                 "error": hw.get("error", ""),
                 "queued_count": len([j for j in q_jobs if not j.get("hardware_job_id")]) + (hw.get("queued_jobs", 0) if hw.get("online") else 0),
                 "is_default": (pid == get_default_printer_id()),
@@ -83,6 +93,8 @@ class PrinterService:
                 "job_name": first_hw.get("job_name"),
                 "user": first_hw.get("user"),
                 "state": first_hw.get("state_desc"),
+                "state_code": first_hw.get("state_code"),
+                "state_reasons": _normalize_reasons(first_hw.get("state_reasons")),
                 "sheets": first_hw.get("sheets_completed", 0),
                 "printer_name": p_cfg.get("name")
             }
@@ -111,9 +123,10 @@ class PrinterService:
                 "ip": p_cfg.get("ip", ""),
                 "gateway": p_cfg.get("gateway", ""),
                 "online": hw_status.get("online", False),
+                "state_code": hw_status.get("state_code", 3 if hw_status.get("online") else 0),
                 "state_desc": hw_status.get("state_desc", "未知"),
                 "error": hw_status.get("error", ""),
-                "reasons": hw_status.get("reasons", []),
+                "reasons": _normalize_reasons(hw_status.get("reasons")),
                 "queued_count": len([j for j in virtual_active_queue if not j.get("hardware_job_id")]) + len(hw_active_jobs),
                 "remote_ui_url": f"http://{p_cfg.get('ip')}:{p_cfg.get('remote_ui_port', 8000)}/portal_top.html" if p_cfg.get("remote_ui_port") else None
             },

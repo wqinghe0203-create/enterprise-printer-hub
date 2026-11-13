@@ -24,7 +24,7 @@
     .node-info-bar { font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:14px; flex-wrap:wrap; } .node-info-bar a { text-decoration:none; } .node-info-bar strong { color:#4f607a; font-weight:500; }
     .page-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; } h1 { font-size:27px; letter-spacing:-1px; font-weight:650; line-height:1.4; } .page-description { color:var(--text-muted); font-size:12px; margin-top:5px; } .live-indicator { color:#5b6e81; display:flex; gap:7px; align-items:center; font-size:11px; } .live-dot { width:6px; height:6px; border-radius:50%; background:#299b79; }
     .section-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; } .section-heading h2 { font-size:14px; font-weight:600; } .section-heading span { font-size:11px; color:var(--text-muted); }
-    .badge,.status-badge,.prio-pill,.source-tag,.user-badge { display:inline-flex; align-items:center; gap:5px; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:500; white-space:nowrap; } .badge-online,.status-success { color:#1e785a; background:#eaf6ef; } .badge-offline,.status-danger,.prio-100 { color:#b53e49; background:#fceef0; } .pulse-dot,.status-dot { height:5px; width:5px; border-radius:50%; background:currentColor; } .badge-offline .pulse-dot { background:var(--danger); } .status-info,.prio-50,.source-agent { color:#3262bc; background:#edf3ff; } .status-muted,.source-hw { color:#728096; background:#f0f3f6; } .prio-80 { color:#996c24; background:#fff4df; } .user-badge { color:#5d6c80; background:#f3f5f8; }
+    .badge,.status-badge,.prio-pill,.source-tag,.user-badge { display:inline-flex; align-items:center; gap:5px; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:500; white-space:nowrap; } .badge-online,.status-success { color:#1e785a; background:#eaf6ef; } .badge-offline,.badge-danger,.status-danger,.prio-100 { color:#b53e49; background:#fceef0; } .pulse-dot,.status-dot { height:5px; width:5px; border-radius:50%; background:currentColor; } .badge-offline .pulse-dot,.badge-danger .pulse-dot,.status-danger .status-dot { background:var(--danger); } .badge-warning,.status-warning { color:#b25e09; background:#fff4df; } .badge-warning .pulse-dot,.status-warning .status-dot { background:#b25e09; } .status-info,.prio-50,.source-agent { color:#3262bc; background:#edf3ff; } .status-muted,.source-hw { color:#728096; background:#f0f3f6; } .prio-80 { color:#996c24; background:#fff4df; } .user-badge { color:#5d6c80; background:#f3f5f8; }
     .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:36px; padding:7px 12px; border-radius:7px; border:1px solid transparent; font-size:12px; font-weight:500; cursor:pointer; text-decoration:none; white-space:nowrap; transition:background .18s,box-shadow .18s; } .btn-outline { color:#536179; border-color:#e0e5ed; background:white; box-shadow:0 1px 2px #182b4505; } .btn-outline:hover { background:#f1f5fb; border-color:#becbe0; } .btn-primary { background:var(--primary); color:#fff; box-shadow:0 3px 7px #2864ec22; } .btn-primary:hover { background:var(--primary-hover); } .btn-danger { color:#b94650; background:#fff5f5; border-color:#f3dce0; } .btn-danger:hover { background:#fce6e8; } .btn-urgent { color:#996b22; background:#fff7e9; border-color:#f1e3c8; } .btn-urgent:hover { background:#ffedce; } .btn-sm { min-height:30px; padding:4px 8px; font-size:11px; } .btn:disabled { opacity:.55; cursor:wait; }
     .grid { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start; } .grid>div { min-width:0; } .card { background:#fff; border:1px solid var(--card-border); border-radius:12px; padding:20px; margin-bottom:20px; } .card-title { font-size:14px; font-weight:600; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:18px; } .card-title>span:last-child:not(:first-child) { font-size:10px!important; } .card-subtitle { color:var(--text-muted); font-size:11px; margin-top:-10px; margin-bottom:18px; line-height:1.8; }
     .active-banner { display:flex; gap:12px; align-items:center; padding:16px; border-radius:9px; background:#f5f8ff; border:1px solid #e5edfc; } .user-avatar { width:40px; height:40px; border-radius:12px; background:#e0eaff; color:#3767c4; display:grid; place-items:center; flex-shrink:0; font-weight:600; } .active-info { flex:1; min-width:0; } .active-doc { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:5px; } .active-sub { display:flex; gap:10px; flex-wrap:wrap; color:var(--text-muted); font-size:11px; }
@@ -61,7 +61,7 @@
     .history-table .record-time { font-variant-numeric:tabular-nums; color:var(--text-muted); font-size:11px; }
     @media (min-width:601px) {
       .history-table,.history-table thead,.history-table tbody { display:block; }
-      .history-table tr { display:grid; grid-template-columns:86px minmax(168px,1fr) 132px 80px 108px 126px 80px; align-items:center; border-bottom:1px solid var(--border-subtle); }
+      .history-table tr { display:grid; grid-template-columns:86px minmax(168px,1fr) 132px 80px 126px 126px 80px; align-items:center; border-bottom:1px solid var(--border-subtle); }
       .history-table tr:last-child { border-bottom:0; }
       .history-table thead { background:#f7f9fc; border-bottom:1px solid var(--card-border); }
       .history-table th { border:0; }
@@ -129,7 +129,7 @@
     .device-toolbar { min-height:56px; display:flex; align-items:center; gap:12px; background:white; border:1px solid var(--card-border); border-radius:10px 10px 0 0; padding:8px 12px; }
     .device-toolbar>label { flex-shrink:0; font-size:12px; color:var(--text-muted); }
     .device-toolbar>select { flex:1; min-width:0; max-width:560px; font-size:13px; }
-    .device-actions { margin-left:auto; display:flex; gap:6px; flex-shrink:0; }
+    .device-actions { margin-left:auto; display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
     .device-actions details { position:relative; }
     .device-actions summary { list-style:none; }
     .device-actions summary::-webkit-details-marker { display:none; }
@@ -141,14 +141,30 @@
     .selection-status { padding:8px 12px; color:var(--primary); background:#edf3ff; border-inline:1px solid var(--card-border); }
     .selection-status[data-error="true"] { color:var(--danger); background:#fff2f2; }
     .device-management { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-    .device-list { background:white; border:1px solid var(--card-border); border-radius:10px; margin-bottom:12px; }
-    .device-row { display:grid; grid-template-columns:minmax(0,2fr) minmax(80px,1fr) 64px 72px auto; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--card-border); }
-    .device-row-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+    .device-list { background:white; border:1px solid var(--card-border); border-radius:10px; margin-bottom:12px; container-type:inline-size; }
+    .device-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:6px 12px; padding:12px 14px; border-bottom:1px solid var(--card-border); }
+    .device-row-actions { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; align-items:center; }
     .device-row:last-child { border-bottom:0; }
     .device-row[aria-current="true"] { background:#f1f6ff; box-shadow:inset 3px 0 var(--primary); }
     .device-row-name { min-width:0; overflow-wrap:anywhere; }
-    .device-row-name strong { display:block; font-size:13px; }
-    .device-row-name small,.device-row-location { color:var(--text-muted); font-size:12px; overflow-wrap:anywhere; }
+    .device-row-name strong { display:flex; align-items:center; flex-wrap:wrap; gap:6px; font-size:13px; }
+    .device-row-name small,.device-row-location { color:var(--text-muted); font-size:12px; overflow-wrap:anywhere; text-align:left; }
+    .device-row-state { min-width:0; }
+    .device-row-state .status-badge { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+    .device-row-tasks { white-space:nowrap; font-size:12px; color:var(--text-muted); }
+    @container (min-width:640px) {
+      .device-row { grid-template-columns:minmax(0,1fr) 132px 156px 76px 158px; gap:12px; }
+      .device-row-location { justify-self:start; width:100%; }
+      .device-row-state { justify-self:start; }
+      .device-row-tasks { justify-self:start; }
+      .device-row-actions { flex-wrap:nowrap; }
+    }
+    @container (max-width:639px) {
+      .device-row-location { grid-column:1; }
+      .device-row .device-row-state { grid-column:2; grid-row:1; justify-self:end; }
+      .device-row .device-row-tasks { grid-column:1; }
+      .device-row-actions { grid-column:2; grid-row:2/4; max-width:156px; }
+    }
     .queue-activity { padding:8px 0 12px; color:var(--text-muted); font-size:12px; }
     .queue-activity .active-banner { padding:8px 10px; gap:10px; }
     .queue-activity .user-avatar { width:30px; height:30px; border-radius:7px; }
@@ -158,6 +174,7 @@
     #queue .doc-name { font-size:12px; }
     body[data-view="overview"] .queue-table th:nth-child(4),body[data-view="overview"] .queue-table td:nth-child(4) { display:none; }
     body[data-view="overview"] .queue-table th:nth-child(7) { width:140px!important; }
+    @media (min-width:601px) { .queue-table th:nth-child(5),.queue-table td:nth-child(5) { width:96px; min-width:96px; white-space:nowrap; } }
     body[data-view="overview"] .queue-table { min-width:700px; }
     body[data-view="new-print"] .page-heading a[href="#new-print"] { display:none; }
     #queue .pagination { padding-top:10px; margin-top:0; }
@@ -206,11 +223,7 @@
       .summary-bar { gap:4px 12px; padding:8px 10px; }
       .mobile-nav { margin-bottom:12px; }
       .mobile-nav a { min-height:44px; display:flex; align-items:center; }
-      .device-row { grid-template-columns:minmax(0,1fr) auto; gap:6px 12px; padding:12px; }
-      .device-row-location { grid-column:1; }
-      .device-row .device-row-state { grid-column:2; grid-row:1; }
-      .device-row .device-row-tasks { grid-column:1; }
-      .device-row-actions { grid-column:2; grid-row:2/4; max-width:120px; }
+      .device-row { padding:12px; }
       .btn-sm,.page-controls .btn,.page-size select { min-height:44px; }
       .print-more-settings summary,.device-advisories summary { min-height:44px; }
       body[data-view="overview"] .queue-table { min-width:0; }
@@ -257,13 +270,14 @@
     .data-table tr.job-highlight,.data-table tbody tr.job-highlight:hover { background:#edf4ff; box-shadow:inset 3px 0 var(--primary); }
     @media(max-width:600px) { .name-preference label { min-height:44px; } }
     .recent-records-note { font-size:11px; color:var(--text-muted); margin-bottom:10px; }
-    .recent-table { table-layout:fixed; min-width:620px; }
+    .recent-table { table-layout:fixed; min-width:640px; }
     .recent-table th:nth-child(1) { width:auto; }
     .recent-table th:nth-child(2) { width:138px; }
     .recent-table th:nth-child(3) { width:90px; }
-    .recent-table th:nth-child(4) { width:108px; }
-    .recent-table th:nth-child(5) { width:140px; }
+    .recent-table th:nth-child(4) { width:124px; }
+    .recent-table th:nth-child(5) { width:160px; }
     .recent-table td { height:60px; padding:10px; overflow-wrap:anywhere; }
+    .recent-table .status-badge { max-width:100%; white-space:normal; text-align:left; line-height:1.4; }
     .recent-table .doc-name { display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
     .recent-table time { font-variant-numeric:tabular-nums; color:var(--text-muted); }
     #recent-records-updates { margin-bottom:10px; }
@@ -318,6 +332,7 @@
     <select id="printer-select" class="form-control" onchange="switchPrinter(this.value)" aria-describedby="device-selection-status"><option value="">正在加载设备…</option></select>
     <span class="badge" id="p-status-badge"><span class="pulse-dot"></span><span id="p-status-text">待加载</span></span>
     <div class="device-actions">
+      <button type="button" class="btn btn-outline" id="top-set-default-btn" onclick="saveDefaultPrinter(activePrinterId)" hidden>设为默认</button>
       <details id="device-details"><summary class="btn btn-outline">设备详情</summary><div class="device-popover"><strong id="p-name">待选择设备</strong><p>型号：<span id="p-model">—</span></p><p>IP：<span id="p-ip">—</span></p><p>网关：<span id="p-gateway">—</span></p></div></details>
       <details id="device-more"><summary class="btn btn-outline">更多操作</summary><div class="device-popover"><button class="btn btn-outline" onclick="fetchDashboard()">刷新状态</button><button class="btn btn-outline" onclick="openDiagModal()">网络诊断</button><a id="p-remote-ui" href="#" target="_blank" rel="noopener" class="btn btn-outline" style="display:none">设备控制台 ↗</a></div></details>
     </div>
@@ -361,7 +376,7 @@
                 <th style="min-width: 190px;">文档名称</th>
                 <th style="width: 100px;">提交人</th>
                 <th style="width: 110px;">目标设备</th>
-                <th style="width: 65px;">页数</th>
+                <th style="width: 96px; min-width: 96px; white-space: nowrap;">页数</th>
                 <th style="width: 105px;">优先级</th>
                 <th style="width: 95px;">状态</th>
                 <th style="width: 180px; text-align: right;">调度操作</th>
@@ -517,7 +532,7 @@
     document.getElementById('recent-records-tbody').innerHTML='<tr><td colspan="5" class="empty-state">'+(printerId?'正在读取本机记录…':'请先选择打印设备。')+'</td></tr>';
   }
   function drawRecentRecords() {
-    document.getElementById('recent-records-tbody').innerHTML=(recentRecords||[]).map(job=>`<tr><td data-label="文件名称"><span class="doc-name" title="${escapeHTML(job.filename)}">${escapeHTML(job.filename)}</span></td><td data-label="提交时间"><time>${escapeHTML(job.created_at||'未提供时间')}</time></td><td data-label="提交人">${escapeHTML(job.user||'未知用户')}</td><td data-label="页数 / 份数">${escapeHTML(job.pages??'未知')} 页 / ${escapeHTML(job.copies??'未知')} 份</td><td data-label="状态">${escapeHTML(localState(job.status))}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">当前设备暂无本机打印记录。</td></tr>';
+    document.getElementById('recent-records-tbody').innerHTML=(recentRecords||[]).map(job=>`<tr><td data-label="文件名称"><span class="doc-name" title="${escapeHTML(job.filename)}">${escapeHTML(job.filename)}</span></td><td data-label="提交时间"><time>${escapeHTML(job.created_at||'未提供时间')}</time></td><td data-label="提交人">${escapeHTML(job.user||'未知用户')}</td><td data-label="页数 / 份数">${escapeHTML(job.pages??'未知')} 页 / ${escapeHTML(job.copies??'未知')} 份</td><td data-label="状态">${renderLocalStatus(job.status, job)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty-state">当前设备暂无本机打印记录。</td></tr>';
   }
   async function fetchRecentRecords() {
     if(currentView!=='overview' || !activePrinterId || selectionRequired)return;
@@ -753,14 +768,35 @@
     'document-format-error':'文档格式错误', 'document-format-not-supported':'设备不支持此文档格式',
     'document-unprintable-error':'文档无法解析', 'job-completed-successfully':'设备报告完成',
     'media-empty-report':'纸盒缺纸提示，请检查纸盒', 'media-empty-warning':'纸盒缺纸',
-    'media-empty-error':'缺纸，无法打印', 'toner-low-warning':'墨粉偏低',
+    'media-empty-error':'缺纸，无法打印', 'media-needed':'需要补充纸张', 'media-needed-report':'需要补充纸张',
+    'media-jam':'打印机卡纸，请现场清理', 'media-jam-report':'纸张卡纸提示',
+    'media-jam-warning':'检测到可能卡纸', 'media-jam-error':'打印机卡纸，无法打印',
+    'door-open':'打印机舱门未关', 'door-open-report':'打印机舱门打开',
+    'door-open-warning':'打印机舱门未关', 'door-open-error':'打印机舱门打开，无法打印',
+    'cover-open':'打印机机盖打开', 'cover-open-warning':'打印机机盖未关', 'cover-open-error':'打印机机盖打开，无法打印',
+    'paused':'打印机已暂停', 'input-tray-missing':'进纸盒未安装', 'output-area-full':'出纸口已满',
+    'toner-low-warning':'墨粉偏低', 'toner-empty-error':'墨粉耗尽，无法打印',
     'job-canceled-by-user':'用户已取消', 'job-aborted-by-system':'设备终止作业'
   };
+  function normalizeReasons(reasons) {
+    return (Array.isArray(reasons) ? reasons : (reasons ? [reasons] : [])).filter(Boolean);
+  }
+  function isPrinterStopped(p) {
+    if (!p || !p.online) return false;
+    const reasons = normalizeReasons(p.reasons);
+    return p.state_code === 5 ||
+      /Stopped|暂停|故障|jam|empty|卡纸|缺纸/i.test(p.state_desc || '') ||
+      reasons.some(r => !/-report$/i.test(r) && /jam|empty|door|cover|error|stopped|paused/i.test(r));
+  }
+  function isPrinterPrinting(p) {
+    if (!p || !p.online || isPrinterStopped(p)) return false;
+    return p.state_code === 4 || /Processing|打印中|出纸/i.test(p.state_desc || '');
+  }
   function reasonText(reasons) {
-    return (Array.isArray(reasons) ? reasons : [reasons]).filter(r => r && r !== 'none').map(r => reasonLabels[r] || r).join('；');
+    return normalizeReasons(reasons).filter(r => r !== 'none').map(r => reasonLabels[r] || r).join('；');
   }
   function localState(status) {
-    return {queued:'待处理 / 排队中', converting:'正在转换文档', sending:'正在发送，请勿重复提交', printing:'正在打印', submitted:'已提交 · 等待设备确认', unknown:'发送结果未知 · 勿重复提交', unconfirmed:'未核实', failed:'打印失败', canceled:'已取消', completed:'设备确认完成'}[status] || status;
+    return {queued:'待处理 / 排队中', paused:'已暂停', converting:'正在转换文档', sending:'正在发送，请勿重复提交', printing:'正在打印', submitted:'已提交 · 等待设备确认', unknown:'发送结果未知 · 勿重复提交', unconfirmed:'未核实', failed:'打印失败', canceled:'已取消', completed:'设备确认完成'}[status] || status;
   }
   function deliveryDetails(job) {
     const trace = job.delivery_trace || {};
@@ -779,19 +815,45 @@
   function renderStatusBadge(stateDesc) {
     if (!stateDesc) return '<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>未知</span>';
     const desc = String(stateDesc).trim();
-    if (desc.includes('Completed') || desc.includes('已完成') || desc.includes('成功')) {
+    if (/Stopped|暂停|故障|jam|empty|卡纸|缺纸/i.test(desc)) {
+      return `<span class="status-badge status-danger"><span class="status-dot dot-danger"></span>${escapeHTML(desc)}</span>`;
+    }
+    if (/Aborted|异常|终止|失败/i.test(desc)) {
+      return `<span class="status-badge status-danger"><span class="status-dot dot-danger"></span>${escapeHTML(desc || '异常终止')}</span>`;
+    }
+    if (/Completed|已完成|成功/i.test(desc)) {
       return '<span class="status-badge status-success"><span class="status-dot dot-success"></span>设备报告完成</span>';
     }
-    if (desc.includes('Aborted') || desc.includes('异常') || desc.includes('终止') || desc.includes('失败')) {
-      return '<span class="status-badge status-danger"><span class="status-dot dot-danger"></span>异常终止</span>';
+    if (/Processing|打印中|出纸/i.test(desc)) {
+      return `<span class="status-badge status-info"><span class="status-dot dot-info"></span>${escapeHTML(desc || '正在出纸')}</span>`;
     }
-    if (desc.includes('Processing') || desc.includes('打印中') || desc.includes('出纸')) {
-      return '<span class="status-badge status-info"><span class="status-dot dot-info"></span>正在出纸</span>';
+    if (/Pending|排队|挂起|等待/i.test(desc)) {
+      return `<span class="status-badge status-warning"><span class="status-dot dot-warning"></span>${escapeHTML(desc)}</span>`;
     }
-    if (desc.includes('Canceled') || desc.includes('取消')) {
+    if (/Canceled|取消/i.test(desc)) {
       return '<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>已取消</span>';
     }
-    return `<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>${desc}</span>`;
+    return `<span class="status-badge status-muted"><span class="status-dot dot-muted"></span>${escapeHTML(desc)}</span>`;
+  }
+  function renderLocalStatus(status, job = null) {
+    let text = localState(status);
+    let cls = 'status-info';
+    const jobReasons = normalizeReasons(job?.state_reasons);
+    const jobDeviceState = job?.delivery_trace?.device_job_state;
+    const hasReasonError = jobReasons.some(r => /jam|empty|door|cover|error|stopped|paused/i.test(r));
+    if (status === 'failed' || status === 'unknown' || status === 'paused') {
+      cls = 'status-danger';
+    } else if (jobDeviceState === 6 || hasReasonError) {
+      cls = 'status-danger';
+      if (jobDeviceState === 6) text = '打印暂停 (Processing-Stopped)';
+    } else if (status === 'completed') {
+      cls = 'status-success';
+    } else if (status === 'canceled') {
+      cls = 'status-muted';
+    } else if (status === 'queued' || status === 'submitted' || status === 'unconfirmed') {
+      cls = 'status-warning';
+    }
+    return `<span class="status-badge ${cls}"><span class="status-dot"></span>${escapeHTML(text)}</span>`;
   }
 
   function fileLocked() {return uploadInFlight || !!pendingUpload;}
@@ -840,28 +902,78 @@
     document.getElementById('submit-btn').disabled=uploadInFlight || (!deviceReady && !pendingUpload && !sessionStorage.getItem('print-request'));
     updateFileUI();
   }
+  const LOCAL_DEFAULT_KEY = 'print-hub-default-printer';
+  function getLocalDefaultPrinterId() {
+    try { return localStorage.getItem(LOCAL_DEFAULT_KEY) || ''; } catch (_) { return ''; }
+  }
+  function setLocalDefaultPrinterId(id) {
+    try {
+      if (id) localStorage.setItem(LOCAL_DEFAULT_KEY, id);
+      else localStorage.removeItem(LOCAL_DEFAULT_KEY);
+    } catch (_) {}
+  }
+  function getEffectiveDefaultPrinterId(cluster = printerCatalog) {
+    const serverDefault = (cluster.find(p => p.is_default) || {}).id || '';
+    if (!deviceManagementAllowed) {
+      const localId = getLocalDefaultPrinterId();
+      if (localId && cluster.some(p => p.id === localId)) return localId;
+    }
+    return serverDefault;
+  }
   function deviceLabel(printer) {
     return printer ? `${printer.name}${printer.location ? ' ('+printer.location+')' : ''}` : '请选择设备';
   }
   function renderDeviceCatalog(cluster) {
     printerCatalog=cluster;
+    const effectiveDefaultId = getEffectiveDefaultPrinterId(cluster);
     const select=document.getElementById('printer-select');
-    const markup='<option value="" disabled>请选择打印设备</option>'+cluster.map(p=>`<option value="${escapeHTML(p.id)}">${escapeHTML(deviceLabel(p))} · ${p.online?'在线':'离线'}${p.is_default?' · 默认':''}</option>`).join('');
+    const markup='<option value="" disabled>请选择打印设备</option>'+cluster.map(p=>{
+      const stopped = isPrinterStopped(p);
+      const printing = isPrinterPrinting(p);
+      const stLabel = !p.online ? '离线' : (stopped ? '暂停/故障' : (printing ? '正在打印' : '在线'));
+      const isEffDef = p.id === effectiveDefaultId;
+      const defTag = isEffDef ? ((!deviceManagementAllowed && !p.is_default) ? ' · 本机默认' : ' · 默认') : '';
+      return `<option value="${escapeHTML(p.id)}">${escapeHTML(deviceLabel(p))} · ${stLabel}${defTag}</option>`;
+    }).join('');
     if(markup!==selectorMarkup) {select.innerHTML=markup;selectorMarkup=markup;}
     select.value=activePrinterId||'';
-    document.getElementById('upload-target-default').hidden=!cluster.some(p=>p.id===activePrinterId&&p.is_default);
+    const activeIsDefault = !!activePrinterId && activePrinterId === effectiveDefaultId;
+    const activePrinterObj = cluster.find(p => p.id === activePrinterId);
+    const uploadDefBadge = document.getElementById('upload-target-default');
+    uploadDefBadge.hidden = !activeIsDefault;
+    uploadDefBadge.textContent = (!deviceManagementAllowed && activeIsDefault && !activePrinterObj?.is_default) ? '本机默认' : '默认';
+    const topDefBtn = document.getElementById('top-set-default-btn');
+    if (topDefBtn) {
+      const hasActive = !!activePrinterObj;
+      topDefBtn.hidden = !hasActive;
+      topDefBtn.disabled = !hasActive || activeIsDefault || defaultSaveBusy;
+      topDefBtn.textContent = activeIsDefault ? '已是默认' : '设为默认';
+    }
     const list=document.getElementById('cluster-container');
     const focusedDevice=document.activeElement?.dataset.printerId;
     const focusedDefault=document.activeElement?.dataset.defaultPrinterId;
-    list.innerHTML=cluster.map(p=>`<div class="device-row" aria-current="${p.id===activePrinterId}">
-      <div class="device-row-name"><strong>${escapeHTML(p.name)} ${p.is_default?'<span class="badge status-info">默认</span>':''}</strong><small>${escapeHTML(p.ip||'')}</small></div>
+    list.innerHTML=cluster.map(p=>{
+      const stopped = isPrinterStopped(p);
+      const printing = isPrinterPrinting(p);
+      const stateBadgeClass = !p.online ? 'status-danger' : (stopped ? 'status-danger' : (printing ? 'status-info' : 'status-success'));
+      const stateLabel = !p.online ? '离线' : (stopped ? (p.state_desc || '暂停/故障') : (printing ? (p.state_desc || '正在打印') : '在线就绪'));
+      const isEffDef = p.id === effectiveDefaultId;
+      let defBadge = '';
+      if (isEffDef) {
+        defBadge = `<span class="badge status-info">${(!deviceManagementAllowed && !p.is_default) ? '本机默认' : '默认'}</span>`;
+      } else if (p.is_default && !deviceManagementAllowed) {
+        defBadge = '<span class="badge status-muted">全局默认</span>';
+      }
+      return `<div class="device-row" aria-current="${p.id===activePrinterId}">
+      <div class="device-row-name"><strong>${escapeHTML(p.name)} ${defBadge}</strong><small>${escapeHTML(p.ip||'')}</small></div>
       <span class="device-row-location">${escapeHTML(p.location||'未设置位置')}</span>
-      <span class="device-row-state" style="color:var(--${p.online?'success':'danger'})">${p.online?'在线':'离线'}</span>
+      <span class="device-row-state"><span class="status-badge ${stateBadgeClass}"><span class="status-dot"></span>${escapeHTML(stateLabel)}</span></span>
       <span class="device-row-tasks">${Number(p.queued_count)||0} 个任务</span>
       <div class="device-row-actions">
         <button class="btn btn-outline btn-sm" data-printer-id="${escapeHTML(p.id)}" ${p.id===activePrinterId?'disabled':''}>${p.id===activePrinterId?'当前设备':'使用设备'}</button>
-        ${deviceManagementAllowed&&!p.is_default?`<button class="btn btn-outline btn-sm" data-default-printer-id="${escapeHTML(p.id)}" ${defaultSaveBusy?'disabled':''}>设为默认</button>`:''}
-      </div></div>`).join('')||'<p class="empty-state">暂无可用配置，请添加打印机。</p>';
+        ${!isEffDef?`<button class="btn btn-outline btn-sm" data-default-printer-id="${escapeHTML(p.id)}" ${defaultSaveBusy?'disabled':''}>设为默认</button>`:'<button class="btn btn-outline btn-sm" disabled>已是默认</button>'}
+      </div></div>`;
+    }).join('')||'<p class="empty-state">暂无可用配置，请添加打印机。</p>';
     list.querySelectorAll('[data-printer-id]').forEach(button=>{button.onclick=()=>switchPrinter(button.dataset.printerId);if(focusedDevice===button.dataset.printerId && !button.disabled)button.focus({preventScroll:true});});
     list.querySelectorAll('[data-default-printer-id]').forEach(button=>{
       button.onclick=()=>saveDefaultPrinter(button.dataset.defaultPrinterId);
@@ -871,12 +983,26 @@
     document.getElementById('metric-total').textContent=` / ${cluster.length} 台`;
   }
   async function saveDefaultPrinter(id) {
-    if(defaultSaveBusy||!deviceManagementAllowed)return;
+    if(defaultSaveBusy || !id || !printerCatalog.some(p=>p.id===id))return;
+    if(!deviceManagementAllowed) {
+      const target = printerCatalog.find(p => p.id === id);
+      if (target?.is_default) {
+        setLocalDefaultPrinterId('');
+        notify('已恢复跟随全局默认打印机，下次打开网页时生效。');
+      } else {
+        setLocalDefaultPrinterId(id);
+        notify('已在本浏览器设为默认打印机，下次打开网页时生效。');
+      }
+      defaultSaveVersion++;
+      renderDeviceCatalog(printerCatalog);
+      return;
+    }
     defaultSaveBusy=true;
     renderDeviceCatalog(printerCatalog);
     try {
       const result=await requestJSON('/api/default-printer?'+new URLSearchParams({printer_id:id}),{method:'POST'});
       defaultSaveVersion++;
+      setLocalDefaultPrinterId('');
       printerCatalog=printerCatalog.map(p=>({...p,is_default:p.id===result.default_printer_id}));
       if(latestDashboard)latestDashboard.cluster=printerCatalog;
       notify('已保存默认打印机，下次打开网页时生效。');
@@ -895,6 +1021,7 @@
     const status=document.getElementById('device-selection-status');status.hidden=false;status.textContent=message;status.dataset.error=String(error);
     document.getElementById('printer-select').setAttribute('aria-busy',String(!error));
     document.getElementById('upload-target-name').textContent=deviceLabel(printerCatalog.find(p=>p.id===activePrinterId));
+    document.getElementById('top-set-default-btn').hidden=true;
     for(const id of ['p-name','p-model','p-ip','p-gateway','metric-printing','metric-queued'])document.getElementById(id).textContent='—';
     document.getElementById('p-status-text').textContent=error?'未确认':'切换中';
     document.getElementById('p-status-badge').className='badge status-muted';
@@ -916,9 +1043,11 @@
   async function fetchDashboard() {
     if (dashboardLoading) return;
     dashboardLoading = true;
-    const requestedPrinter = activePrinterId;
+    const localDefault = (!activePrinterId && !selectionRequired) ? getLocalDefaultPrinterId() : '';
+    const requestedPrinter = activePrinterId || localDefault;
     const version=selectionVersion;
     const defaultVersion=defaultSaveVersion;
+    let retryWithoutLocalDefault = false;
     dashboardController=new AbortController();
     try {
       const url = requestedPrinter ? `/api/dashboard?printer_id=${encodeURIComponent(requestedPrinter)}` : '/api/dashboard';
@@ -929,6 +1058,11 @@
       document.getElementById('sync-dot').style.background = 'var(--success)';
     } catch (err) {
       if(version!==selectionVersion || defaultVersion!==defaultSaveVersion) return;
+      if(!activePrinterId && localDefault && err.message.includes('未找到指定打印机')) {
+        setLocalDefaultPrinterId('');
+        retryWithoutLocalDefault = true;
+        return;
+      }
       document.getElementById('sync-status').textContent = '连接中断 · 正在重试';
       document.getElementById('sync-dot').style.background = 'var(--danger)';
       // A removed remembered ID is now rejected by the server. Recover only the
@@ -950,7 +1084,7 @@
         '设备状态读取失败：'+err.message+'；可在“更多操作”中刷新重试。',true);
     } finally {
       dashboardLoading = false;
-      if (version!==selectionVersion || defaultVersion!==defaultSaveVersion) fetchDashboard();
+      if (retryWithoutLocalDefault || version!==selectionVersion || defaultVersion!==defaultSaveVersion) fetchDashboard();
     }
   }
 
@@ -977,16 +1111,17 @@
     document.getElementById('device-selection-status').hidden=true;
     document.getElementById('printer-select').setAttribute('aria-busy','false');
     document.getElementById('upload-target-name').textContent=deviceLabel(data.printer);
-    document.getElementById('metric-printing').textContent=(data.hw_active_jobs||[]).filter(j=>/Processing|打印中|出纸/.test(j.state_desc||'')).length || (data.active_printing?1:0);
+    document.getElementById('metric-printing').textContent=(data.hw_active_jobs||[]).filter(j=>/Processing|打印中|出纸/.test(j.state_desc||'')&&!/Stopped|暂停/.test(j.state_desc||'')).length || (data.active_printing && !/Stopped|暂停|故障|卡纸|缺纸|Aborted|异常|终止|失败/i.test(data.active_printing.state||'') ? 1 : 0);
     document.getElementById('metric-queued').textContent=data.printer.queued_count ?? (data.virtual_queue||[]).length;
     updateSubmitAvailability();
     // Remaining templates interpolate only escaped strings.
+    const rawData = data;
     const rawPrinter = data.printer;
     data = safeData(data);
 
     // 2. Render Active Printer
     const p = rawPrinter;
-    const reasons=Array.isArray(p.reasons)?p.reasons:[];
+    const reasons = normalizeReasons(p.reasons);
     const advisory=reasons.filter(r=>r==='wifi-not-configured-report');
     const warnings = reasonText(reasons.filter(r=>!advisory.includes(r)));
     document.getElementById('device-advisories').hidden=!advisory.length;
@@ -1002,11 +1137,10 @@
     const badgeText = document.getElementById('p-status-text');
     const alertBox = document.getElementById('printer-alert-box');
 
-    if (p.online) {
-      badge.className = "badge badge-online";
-      badgeText.innerText = p.state_desc || "连通就绪";
-      if (alertBox) alertBox.style.display = 'none';
-    } else {
+    const stopped = isPrinterStopped(p);
+    const printing = isPrinterPrinting(p);
+
+    if (!p.online) {
       badge.className = "badge badge-offline";
       badgeText.innerText = p.state_desc || "离线不可达";
       if (alertBox) {
@@ -1014,6 +1148,22 @@
         document.getElementById('alert-err-summary').innerText = `打印机连通异常：${p.state_desc || '离线或网络不可达'}`;
         document.getElementById('alert-err-detail').innerText = p.error ? `底层网络返回：${p.error}` : '无法与打印机 631 端口建立 IPP 连接，请点击右侧按钮体检。';
       }
+    } else if (stopped) {
+      badge.className = "badge badge-danger";
+      badgeText.innerText = p.state_desc || "暂停/故障 (Stopped)";
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        document.getElementById('alert-err-summary').innerText = `打印机硬件异常：${p.state_desc || '暂停/故障 (Stopped)'}`;
+        document.getElementById('alert-err-detail').innerText = warnings || '打印机上报卡纸、缺纸或机盖打开等硬件故障，设备已暂停打印，请现场检查。';
+      }
+    } else if (printing) {
+      badge.className = "badge status-info";
+      badgeText.innerText = p.state_desc || "正在打印";
+      if (alertBox) alertBox.style.display = 'none';
+    } else {
+      badge.className = "badge badge-online";
+      badgeText.innerText = p.state_desc || "连通就绪";
+      if (alertBox) alertBox.style.display = 'none';
     }
 
     const rUiBtn = document.getElementById('p-remote-ui');
@@ -1026,31 +1176,53 @@
 
     // 3. Render Active printing card
     const activeCont = document.getElementById('active-print-container');
-    if (data.active_printing) {
-      const act = data.active_printing;
-      const initial = (act.user || "用")[0];
+    if (rawData.active_printing) {
+      const act = rawData.active_printing;
+      const initial = escapeHTML((act.user || "用")[0]);
+      const stateText = act.state || '处理中';
+      const combinedState = `${stateText} ${reasonText(act.state_reasons)}`;
+      let stateBadgeClass = 'status-info';
+      let bannerStyle = '';
+      let avatarStyle = '';
+      if (/Stopped|暂停|故障|卡纸|缺纸|jam|empty|Aborted|异常|终止|失败|error/i.test(combinedState)) {
+        stateBadgeClass = 'status-danger';
+        bannerStyle = 'border-color:#f5c2c7; background:#fff8f8;';
+        avatarStyle = 'background:#fceef0; color:var(--danger);';
+      } else if (/Processing|打印中|出纸/.test(stateText)) {
+        stateBadgeClass = 'status-info';
+      } else if (/Completed|完成|成功/.test(stateText)) {
+        stateBadgeClass = 'status-success';
+      } else if (/Pending|排队|挂起|Held|等待/.test(stateText)) {
+        stateBadgeClass = 'status-warning';
+      }
       activeCont.innerHTML = `
-        <div class="active-banner">
-          <div class="user-avatar">${initial}</div>
+        <div class="active-banner" style="${bannerStyle}">
+          <div class="user-avatar" style="${avatarStyle}">${initial}</div>
           <div class="active-info">
-            <div class="active-doc" title="${act.job_name}"> ${act.job_name}</div>
+            <div class="active-doc" title="${escapeHTML(act.job_name)}"> ${escapeHTML(act.job_name)}</div>
             <div class="active-sub">
-              <span> 提交人：<strong>${act.user}</strong></span>
-              <span> 状态：<strong style="color:var(--success);">${act.state}</strong></span>
-              <span> 来源：${act.source}</span>
+              <span> 提交人：<strong>${escapeHTML(act.user)}</strong></span>
+              <span> 状态：<span class="status-badge ${stateBadgeClass}"><span class="status-dot"></span>${escapeHTML(stateText)}</span></span>
+              <span> 来源：${escapeHTML(act.source)}</span>
             </div>
           </div>
-          <button class="btn btn-danger btn-sm" onclick="cancelJob(${act.job_id}, ${act.source.includes('硬件')})">撤销</button>
+          <button class="btn btn-danger btn-sm" onclick="cancelJob(${Number(act.job_id)}, ${String(act.source || '').includes('硬件')})">撤销</button>
         </div>
       `;
     } else {
-      activeCont.textContent=p.online ? ((data.virtual_queue||[]).length ? '设备在线，任务进度如下。' : '当前设备空闲，随时可以打印。') : '当前设备离线，可查看本机记录或执行网络诊断。';
+      activeCont.textContent = !p.online
+        ? '当前设备离线，可查看本机记录或执行网络诊断。'
+        : (stopped
+            ? '设备处于暂停/故障状态，请先处理上方提示的硬件异常。'
+            : ((data.virtual_queue||[]).length ? '设备在线，任务进度如下。' : '当前设备空闲，随时可以打印。'));
     }
 
     // 4. Render Queue Table
     const qTbody = document.getElementById('queue-tbody');
     const allVirtual = data.virtual_queue || [];
     const allHardware = data.hw_active_jobs || [];
+    const rawVirtualMap = new Map((rawData.virtual_queue || []).map(j => [j.id, j]));
+    const rawHwMap = new Map((rawData.hw_active_jobs || []).map(j => [j.job_id, j]));
     if(focusedJob?.pending && focusedJob.view==='queue' && focusedJob.printerId===activePrinterId){const index=allVirtual.findIndex(j=>j.id===focusedJob.id);if(index>=0)paginationState.queue.page=Math.floor(index/paginationState.queue.size)+1;}
     const queuePage = getPage([...allVirtual.map(job=>({type:'virtual',job})),...allHardware.map(job=>({type:'hardware',job}))],currentView==='overview'?{page:1,size:5}:paginationState.queue);
     document.getElementById('queue-view-all').hidden=currentView!=='overview';
@@ -1066,6 +1238,7 @@
     } else {
       let html = '';
       vq.forEach(j => {
+        const rawJ = rawVirtualMap.get(j.id) || j;
         let pClass = j.priority >= 90 ? 'prio-100' : (j.priority >= 70 ? 'prio-80' : 'prio-50');
         let pText = j.priority >= 90 ? ` ${j.priority} [紧急]` : `${j.priority}`;
         let docName = j.filename || '未命名文档';
@@ -1080,9 +1253,9 @@
             </td>
             <td><span class="user-badge">${j.user}</span></td>
             <td><span style="font-size:12px; color:var(--text-muted);">${j.printer_name}</span></td>
-            <td><span style="font-weight:600;">${j.pages ?? "待识别"}</span> 页</td>
+            <td style="white-space:nowrap;"><span style="font-weight:600;">${j.pages ?? "待识别"}</span> 页</td>
             <td><span class="prio-pill ${pClass}">${pText}</span></td>
-            <td><span style="color:var(--primary); font-weight:500;">${localState(j.status)}</span></td>
+            <td>${renderLocalStatus(rawJ.status, rawJ)}</td>
             <td style="text-align:right; white-space:nowrap;">
               ${j.status === 'queued' ? `<button class="btn btn-urgent btn-sm" onclick="cutInLine(${j.id})">置顶</button>` : ''}
               <button class="btn btn-outline btn-sm" ${j.status !== 'queued' ? 'disabled' : ''} onclick="adjustPrio(${j.id}, ${Math.min(100, j.priority + 10)})" aria-label="提高优先级" title="提高优先级">▲</button>
@@ -1093,6 +1266,7 @@
         `;
       });
       hwq.forEach(hj => {
+        const rawHj = rawHwMap.get(hj.job_id) || hj;
         let docName = hj.job_name || '未命名作业';
         html += `
           <tr>
@@ -1107,7 +1281,7 @@
             <td><span style="font-size:12px; color:var(--text-muted);">物理机在机</span></td>
             <td>-</td>
             <td><span class="prio-pill prio-80">硬件在机</span></td>
-            <td>${renderStatusBadge(hj.state_desc)}</td>
+            <td>${renderStatusBadge(rawHj.state_desc)}</td>
             <td style="text-align:right; white-space:nowrap;">
               <button class="btn btn-danger btn-sm" onclick="cancelJob(${hj.job_id}, true)">取消物理作业</button>
             </td>
@@ -1291,9 +1465,8 @@
     body.innerHTML=data.items.map(j=>{
       const id=device?j.job_id:j.id;
       const key=(device?'device-':'local-')+id;
-      const status=device?j.state_desc:localState(j.status);
       const detail=device ? `${j.state_message||''} ${reasonText(j.state_reasons)||''}` : `设备：${j.printer_name}；单双面：${({auto:'设备默认',simplex:'单面',duplex_long:'长边双面',duplex_short:'短边双面'})[j.duplex]||j.duplex}；份数：${j.copies??'未知'}；硬件编号：${j.hardware_job_id??'未取得'}；设备报告完成：${j.sheets_completed??'未知'} 张。${j.error_msg||''} ${reasonText(j.state_reasons)||''} ${deliveryDetails(j)}`;
-      return `<tr ${device?'':`data-job-id="${id}"`}><td data-label="来源">${device?'设备作业':'本机提交'}<br>#${escapeHTML(id)}</td><td data-label="文档名称"><span class="doc-name" title="${escapeHTML(device?j.job_name:j.filename)}">${escapeHTML(device?j.job_name:j.filename)}</span><span class="record-detail record-device" title="${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}">${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}</span></td><td data-label="提交时间" class="record-time">${escapeHTML(j.created_at||'设备未提供时间')}</td><td data-label="提交人">${escapeHTML(j.user||'未知用户')}</td><td data-label="页数 / 规格">${device?`${escapeHTML(j.sheets_completed??'未知')} 张（设备报告）`:`${escapeHTML(j.pages??'未知')} 页 / ${escapeHTML(j.copies??'未知')} 份`}</td><td data-label="出纸状态"><span class="status-badge">${escapeHTML(status)}</span></td><td data-label="详情" class="record-actions" role="cell"><details class="record-detail" data-record-key="${key}" ${expanded.has(key)?'open':''}><summary>查看详情</summary><p>${escapeHTML(detail)}</p></details></td></tr>`;
+      return `<tr ${device?'':`data-job-id="${id}"`}><td data-label="来源">${device?'设备作业':'本机提交'}<br>#${escapeHTML(id)}</td><td data-label="文档名称"><span class="doc-name" title="${escapeHTML(device?j.job_name:j.filename)}">${escapeHTML(device?j.job_name:j.filename)}</span><span class="record-detail record-device" title="${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}">${escapeHTML(j.printer_name||latestDashboard?.printer?.name||'')}</span></td><td data-label="提交时间" class="record-time">${escapeHTML(j.created_at||'设备未提供时间')}</td><td data-label="提交人">${escapeHTML(j.user||'未知用户')}</td><td data-label="页数 / 规格">${device?`${escapeHTML(j.sheets_completed??'未知')} 张（设备报告）`:`${escapeHTML(j.pages??'未知')} 页 / ${escapeHTML(j.copies??'未知')} 份`}</td><td data-label="出纸状态">${device?renderStatusBadge(j.state_desc):renderLocalStatus(j.status, j)}</td><td data-label="详情" class="record-actions" role="cell"><details class="record-detail" data-record-key="${key}" ${expanded.has(key)?'open':''}><summary>查看详情</summary><p>${escapeHTML(detail)}</p></details></td></tr>`;
     }).join('') || '<tr><td colspan="7" class="empty-state">没有符合条件的记录</td></tr>';
     locateJob('history');
     paginationState.history.page=data.page;

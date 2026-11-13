@@ -24,6 +24,70 @@ from scripts.config import get_printers, get_default_printer_id, set_default_pri
 from scripts.net_utils import get_host_lan_ip
 
 
+_STOPPED_TEXT_TOKENS = ("暂停", "故障", "Stopped", "卡纸", "缺纸", "Aborted", "异常", "终止", "失败")
+_STOPPED_REASON_TOKENS = ("jam", "empty", "door", "cover", "error", "stopped", "paused")
+
+
+def _is_printer_stopped(printer: dict) -> bool:
+    """判断在线打印机是否处于暂停/卡纸/缺纸等硬件异常状态。"""
+    if not printer.get("online"):
+        return False
+    if printer.get("state_code") == 5:
+        return True
+    desc = str(printer.get("state_desc", ""))
+    if any(tok in desc for tok in ("暂停", "故障", "Stopped", "卡纸", "缺纸")):
+        return True
+    reasons = printer.get("reasons") or []
+    if isinstance(reasons, str):
+        reasons = [reasons]
+    return any(
+        tok in str(r).lower()
+        for r in reasons
+        if not str(r).lower().endswith("-report")
+        for tok in _STOPPED_REASON_TOKENS
+    )
+
+
+def _is_printer_printing(printer: dict) -> bool:
+    """判断在线且未暂停的打印机是否处于正在打印状态。"""
+    if not printer.get("online") or _is_printer_stopped(printer):
+        return False
+    desc = str(printer.get("state_desc", ""))
+    return printer.get("state_code") == 4 or "Processing" in desc or "正在打印" in desc
+
+
+def _format_printer_status(printer: dict, online_label: str = "正常就绪", offline_label: str = "离线报警") -> str:
+    """统一格式化打印机状态徽章。"""
+    if not printer.get("online"):
+        return f"`🔴 {offline_label}`"
+    if _is_printer_stopped(printer):
+        return f"`🔴 {printer.get('state_desc') or '暂停/故障 (Stopped)'}`"
+    if _is_printer_printing(printer):
+        return "`🔵 正在出纸`"
+    return f"`🟢 {online_label}`"
+
+
+def _is_job_stopped_or_error(state_text: str, reasons=None) -> bool:
+    """判断作业状态或原因是否属于暂停/故障/异常终止。"""
+    text = str(state_text or "")
+    if any(tok in text for tok in _STOPPED_TEXT_TOKENS):
+        return True
+    if reasons:
+        items = [reasons] if isinstance(reasons, str) else list(reasons)
+        return any(tok in str(r).lower() for r in items for tok in _STOPPED_REASON_TOKENS)
+    return False
+
+
+def _job_state_icon(state_text: str, reasons=None, default_icon: str = "🟢") -> str:
+    """根据作业状态返回对应的状态指示图标。"""
+    text = str(state_text or "")
+    if _is_job_stopped_or_error(text, reasons):
+        return "🔴"
+    if any(tok in text for tok in ("排队", "挂起", "Pending", "Held")):
+        return "🟡"
+    return default_icon
+
+
 def cmd_printers(args):
     """查看全公司所有打印机状态与负荷概览 (移动优先·卡片流排版)"""
     svc = PrinterService()
@@ -53,7 +117,7 @@ def cmd_printers(args):
     # 彻底弃用超宽8列表格，改用“移动端自适应纵向卡片流”
     for p in cluster:
         def_tag = " `🌟主力`" if p["is_default"] else ""
-        status_tag = "`🟢 正常就绪`" if p["online"] else "`🔴 离线报警`"
+        status_tag = _format_printer_status(p, online_label="正常就绪", offline_label="离线报警")
         queue_text = "📭 空闲 (0 排队)" if p["queued_count"] == 0 else f"⏳ 忙碌 ({p['queued_count']} 任务排队中)"
 
         print(f"> #### {p['name']}{def_tag} · {status_tag}")
@@ -68,8 +132,10 @@ def cmd_printers(args):
     print("### 🎯 实时出纸透视")
     if active_printers:
         for p, act in active_printers:
+            act_state = act.get("state") or "出纸中"
+            act_icon = _job_state_icon(act_state, act.get("state_reasons"), default_icon="🟢")
             print(f"> 📄 **文档名称**：`{act['job_name']}`  ")
-            print(f"> 👤 **当前打印人**：`{act['user']}` ｜ **设备**：{p['name']} ｜ **状态**：`🟢 出纸中` ｜ **进度**：已出纸 {act.get('sheets', 0)} 张")
+            print(f"> 👤 **当前打印人**：`{act['user']}` ｜ **设备**：{p['name']} ｜ **状态**：`{act_icon} {act_state}` ｜ **进度**：已出纸 {act.get('sheets', 0)} 张")
     else:
         print("> 🟢 **全司设备空闲待命中**：当前全公司无占用作业，任何新文档可提交，实际出纸以设备状态为准，无需排队。\n")
 
@@ -88,7 +154,7 @@ def cmd_status(args):
     data = svc.get_full_dashboard_data(target_pid)
     printer = data["printer"]
 
-    status_tag = "`🟢 在线就绪`" if printer["online"] else "`🔴 离线报警`"
+    status_tag = _format_printer_status(printer, online_label="在线就绪", offline_label="离线报警")
     print(f"# 🖨️ 设备状态卡片 · {printer['name']}\n")
     print(f"> #### {printer['name']} · {status_tag}")
     print(f"> - 📍 **物理位置**：{printer['location']}")
@@ -111,17 +177,34 @@ def cmd_queue(args):
     total_q = len(queue) + len(hw_jobs)
 
     print(f"# 🖨️ [{printer['name']}] 智能调度控制台\n")
-    print(f"📍 **位置**：`{printer['location']}` ｜ **状态**：{'`🟢 连通就绪`' if printer['online'] else '`🔴 离线`'}\n")
+    st_desc = _format_printer_status(printer, online_label="连通就绪", offline_label="离线")
+    print(f"📍 **位置**：`{printer['location']}` ｜ **状态**：{st_desc}\n")
+
+    if active:
+        act_state = active.get("state", "") or ""
+        summary_state = f"🔴 {act_state}" if _is_job_stopped_or_error(act_state, active.get("state_reasons")) else "1 人出纸中"
+    elif not printer["online"]:
+        summary_state = "🔴 离线"
+    elif _is_printer_stopped(printer):
+        summary_state = f"🔴 {printer.get('state_desc') or '暂停/故障 (Stopped)'}"
+    else:
+        summary_state = "🟢 空闲待命"
 
     print("| 🎯 实时出纸 | ⏳ 排队待办 | 🏭 设备型号 |")
     print("| :---: | :---: | :---: |")
-    print(f"| **{'1 人出纸中' if active else '🟢 空闲待命'}** | **{total_q} 个任务** | **{printer['model']}** |\n")
+    print(f"| **{summary_state}** | **{total_q} 个任务** | **{printer['model']}** |\n")
 
     # 1. 谁在打印
     print("### 🎯 实时出纸透视")
     if active:
+        act_state = active.get("state", "") or ""
+        state_icon = _job_state_icon(act_state, active.get("state_reasons"), default_icon="🟢")
         print(f"> 📄 **文档名称**：`{active['job_name']}`  ")
-        print(f"> 👤 **当前打印人**：`{active['user']}` ｜ **作业状态**：`🟢 {active['state']}` ｜ **已出纸**：{active.get('sheets', 0)} 张 ｜ **来源**：{active['source']}")
+        print(f"> 👤 **当前打印人**：`{active['user']}` ｜ **作业状态**：`{state_icon} {act_state}` ｜ **已出纸**：{active.get('sheets', 0)} 张 ｜ **来源**：{active['source']}")
+    elif not printer["online"]:
+        print("> 🔴 **设备离线**：当前设备不可达，无法获取实时出纸状态。")
+    elif _is_printer_stopped(printer):
+        print(f"> 🔴 **设备暂停/故障**：{printer.get('state_desc') or '暂停/故障 (Stopped)'}，请检查卡纸、缺纸或机盖状态。")
     else:
         print("> 🟢 **当前无人打印**：设备处于就绪待机中，新提交的公文无需等待，直接出纸。")
     print()
@@ -135,7 +218,14 @@ def cmd_queue(args):
         for j in queue:
             p = j.get("priority", 50)
             p_badge = f"`🔥 {p} 紧急插队`" if p >= 90 else (f"`⚡ {p} 优先`" if p >= 70 else f"`📄 {p} 普通`")
-            st_text = "⏳ 排队等待" if j.get("status") == "queued" else j.get("status")
+            st_text = {
+                "queued": "⏳ 排队等待",
+                "converting": "🔄 正在转换",
+                "sending": "📤 正在发送",
+                "printing": "🔵 正在打印",
+                "submitted": "🟡 等待设备确认",
+                "paused": "🔴 已暂停",
+            }.get(j.get("status"), j.get("status"))
             print(f"> **第 {idx} 位 · 任务 `#{j['id']}`** · {p_badge}")
             print(f"> - 📄 **文档**：**{j['filename']}** ({j.get('pages', 1)} 页)")
             print(f"> - 👤 **提交人**：`{j['user']}` ｜ **设备**：{j.get('printer_name')}")
@@ -144,9 +234,11 @@ def cmd_queue(args):
             idx += 1
 
         for hj in hw_jobs:
+            hj_state = hj.get("state_desc", "") or ""
+            hj_icon = _job_state_icon(hj_state, hj.get("state_reasons"), default_icon="🔵")
             print(f"> **物理机在机 · 任务 `硬件#{hj['job_id']}`** · `⚡ 硬件排队`")
             print(f"> - 📄 **文档**：**{hj['job_name']}**")
-            print(f"> - 👤 **提交人**：`{hj['user']}` ｜ **状态**：{hj['state_desc']}")
+            print(f"> - 👤 **提交人**：`{hj['user']}` ｜ **状态**：{hj_icon} {hj_state}")
             print(">")
             idx += 1
         print()

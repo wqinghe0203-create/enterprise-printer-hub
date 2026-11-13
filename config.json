@@ -1,7 +1,7 @@
 {
   "system": {
     "title": "企业智能文印管理中心",
-    "default_printer_id": "canon_c3130l_27f"
+    "default_printer_id": "printer_796e90e5ffc74775944350471c25b9d8"
   },
   "printers": [
     {
