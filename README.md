@@ -1,6 +1,6 @@
 # 企业智能文印中心 · WorkBuddy 技能包
 
-版本：0.1.5。支持 WorkBuddy 对话调用与网页控制台，包含多设备状态、实时作业、队列优先级管理、文件投递、历史记录和网络诊断。
+版本：0.0.1。支持 WorkBuddy 对话调用与网页控制台，包含多设备状态、实时作业、队列优先级管理、文件投递、历史记录和网络诊断。
 
 ## 中心服务器部署（Linux / Windows + Docker Gotenberg）
 
@@ -38,8 +38,8 @@ curl http://127.0.0.1:3000/health
 | `PRINT_HUB_GOTENBERG_URL` | `http://127.0.0.1:3000` | Gotenberg 服务地址（可指向另一台 Docker 主机） |
 | `PRINT_HUB_GOTENBERG_USER` / `_PASSWORD` | 空 | 跨机部署启用 Gotenberg Basic Auth 时填写 |
 | `PRINT_HUB_API_TOKEN` | 空 | 可选访问口令；设置后非本机调用上传/取消/优先级须携带 `X-Print-Hub-Token` |
-| `PRINT_HUB_ADMIN_TOKEN` | 空 | 可选管理口令；设置后允许远程添加打印机与修改默认打印机 |
-| `PRINT_HUB_REGISTRATION_ORIGIN` | 空 | 中心后台允许普通访问者添加打印机的网页来源，例如 `https://10.0.249.200:8086`，填写浏览器地址的协议、主机和端口 |
+| `PRINT_HUB_ADMIN_TOKEN` | 空 | 可选管理口令；设置后允许远程添加和修改打印机配置，以及设置全局默认打印机 |
+| `PRINT_HUB_REGISTRATION_ORIGIN` | 空 | 中心后台允许普通访问者添加和修改打印机的网页来源，例如 `https://10.0.249.200:8086`，填写浏览器地址的协议、主机和端口 |
 
 ### 4. 同事侧 WorkBuddy 接入配置
 
@@ -111,6 +111,8 @@ powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1
 3. 显示“可以接入”后，填写名称与位置，点击“确认保存”。新设备立即出现在设备列表和上传目标中，不重启、不改变默认设备或现有表单。
 
 添加功能支持与现有 PDF / PWG Raster 链路兼容的网络设备。连接失败、不兼容或重复的设备不会保存。接口接受配置的中心网页来源、本机同源访问及现有管理员令牌。全局默认设备仍由管理接口单独设置。
+
+通过设备行的「修改设备」可以更新名称、位置、IPP 端口和路径。已登记的 IP 为只读。名称和位置可以直接保存，修改端口或路径需检测通过，并等待该设备的待处理或待确认任务结束。修改与添加使用同一套访问权限。
 
 WorkBuddy 可运行 `scripts/cli.py add-printer --ip 10.1.36.229` 检测；明确新增时加 `--save --name "研发区打印机" --location "26F"`，支持 `--ipp-port`、`--ipp-path`。检测与保存共用同一逻辑，禁止默认测试出纸。
 
@@ -221,7 +223,7 @@ PWG Raster 格式实现依据 [CUPS Raster 规范](https://openprinting.github.i
 
 ## 正式导入包
 
-使用 `python tools/build_skill_package.py` 构建 `dist/enterprise-printer-hub-0.1.5-import.zip`。构建包含运行必需文件与说明，排除历史 EXE、`.venv`、`.git`、缓存、测试和用户数据。用户导入后，首次调用在本机配置依赖。
+使用 `python tools/build_skill_package.py` 构建 `dist/enterprise-printer-hub-0.0.1-import.zip`。构建包含运行必需文件与说明，排除历史 EXE、`.venv`、`.git`、缓存、测试和用户数据。用户导入后，首次调用在本机配置依赖。
 
 已有用户务必先将配置和整个 data 目录备份到技能目录以外，避免客户端同名导入覆盖旧数据。具体步骤见 [导入安装说明](导入安装说明.md)。干净包仅修正交付冗余，不等于已经通过 WorkBuddy 安全检测；若检测服务仍返回异常，需由客户端 / 服务侧继续排查。本次未修改运行功能或安全检测设置。
 

@@ -2,7 +2,7 @@
 name: enterprise-printer-hub
 description: 企业多打印机状态查询、实时作业查看、文件打印和任务调度技能。用于“添加打印机”“接入网络打印机”“谁在打印”“打印机列表”“查看27楼队列”“打印这份文件”“紧急插队”“取消打印”“打开打印后台”“LibreOffice 安装好了吗”及打印机网络诊断。通过本技能自带 Python CLI 和网页工作台操作 config.json 中的设备。
 metadata:
-  version: "0.1.5"
+  version: "0.0.1"
 ---
 
 # 企业智能文印中心 · WorkBuddy 技能
@@ -240,7 +240,7 @@ WorkBuddy 收到打开网页工作台的请求时，使用本说明开头的平�
 
 ## 正式交付版本
 
-当前导入包为 enterprise-printer-hub-0.1.5-import.zip，提供 Windows／Mac 首次配置和本机控制台启动入口。导入包排除历史 EXE、虚拟环境及用户数据。发行包内 manifest 与本文件版本必须一致。
+当前导入包为 enterprise-printer-hub-0.0.1-import.zip，提供 Windows／Mac 首次配置和本机控制台启动入口。导入包排除历史 EXE、虚拟环境及用户数据。发行包内 manifest 与本文件版本必须一致。
 
 ## 网页操作细节（0.0.1）
 
