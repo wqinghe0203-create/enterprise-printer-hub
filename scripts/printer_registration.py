@@ -1,4 +1,4 @@
-"""Read-only IPP probes and create-only registration, shared by Web and CLI."""
+"""Read-only IPP probes and validated printer configuration changes."""
 import ipaddress
 import re
 import socket
@@ -6,7 +6,10 @@ import threading
 import time
 import uuid
 
-from .config import create_printer, load_config_strict, printer_endpoint
+from .config import (
+    PrinterEditConflict, create_printer, editable_printer, load_config_strict,
+    printer_endpoint, update_printer,
+)
 from .ipp_core import IPPClient
 
 PRIVATE_NETWORKS = tuple(ipaddress.ip_network(value) for value in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
@@ -59,7 +62,7 @@ def as_list(value):
     return value if isinstance(value, list) else [value] if value is not None else []
 
 
-def inspect_printer(endpoint):
+def inspect_printer(endpoint, printer_id=None):
     """Get-Printer-Attributes only. Never Validate/Print/Cancel a job here."""
     client = IPPClient(printer_cfg={**endpoint, 'name': '待添加打印机'}, follow_redirects=False)
     status = client.get_printer_status()
@@ -79,7 +82,10 @@ def inspect_printer(endpoint):
         usable_sides = [side for side in usable_sides if side == 'one-sided']
     compatible = ('application/pdf' in formats or raster) and bool(usable_sides) and copies_valid
     default_duplex = {'two-sided-long-edge':'duplex_long','two-sided-short-edge':'duplex_short','one-sided':'simplex'}.get(usable_sides[0] if usable_sides else '', 'simplex')
-    duplicate = any(printer_endpoint(printer) == printer_endpoint(endpoint) for printer in load_config_strict()['printers'])
+    duplicate = any(
+        printer['id'] != printer_id and printer_endpoint(printer) == printer_endpoint(endpoint)
+        for printer in load_config_strict()['printers']
+    )
     return {
         'status':'succeeded', 'compatible':compatible, 'can_save':compatible and not duplicate,
         'duplicate':duplicate,
@@ -119,6 +125,13 @@ def save_inspected_printer(endpoint, result, name, location):
         raise RegistrationError(str(exc), 409) from exc
 
 
+def printer_for_edit(printer_id):
+    for printer in load_config_strict()['printers']:
+        if printer['id'] == printer_id:
+            return editable_printer(printer)
+    raise RegistrationError('未找到指定打印机', 404)
+
+
 class ProbeRegistry:
     def __init__(self):
         self._lock = threading.Lock()
@@ -130,6 +143,16 @@ class ProbeRegistry:
         self._records = {key:value for key,value in self._records.items() if value['expires'] > now}
 
     def start(self, data):
+        printer_id = data.get('printer_id')
+        if 'printer_id' in data:
+            if 'ip' in data:
+                raise RegistrationError('编辑设备时不能提供 IP')
+            if data.keys() - {'printer_id', 'ipp_port', 'ipp_path'}:
+                raise RegistrationError('含有不支持的检测字段')
+            if not isinstance(printer_id, str) or not printer_id:
+                raise RegistrationError('设备标识无效')
+            current = printer_for_edit(printer_id)
+            data = {**current, **data}
         endpoint = validate_endpoint(data)
         with self._lock:
             self._prune()
@@ -138,14 +161,15 @@ class ProbeRegistry:
             if len(self._records) >= 32:
                 raise RegistrationError('检测次数过多，请稍后重试', 429)
             probe_id = uuid.uuid4().hex
-            self._records[probe_id] = {'endpoint':endpoint, 'result':{'status':'pending'}, 'expires':time.monotonic()+PROBE_TTL}
+            self._records[probe_id] = {'endpoint':endpoint, 'printer_id':printer_id,
+                                       'result':{'status':'pending'}, 'expires':time.monotonic()+PROBE_TTL}
             self._active = True
-            threading.Thread(target=self._run, args=(probe_id, endpoint), daemon=True).start()
+            threading.Thread(target=self._run, args=(probe_id, endpoint, printer_id), daemon=True).start()
         return {'probe_id':probe_id, 'status':'pending'}
 
-    def _run(self, probe_id, endpoint):
+    def _run(self, probe_id, endpoint, printer_id):
         try:
-            result = inspect_printer(endpoint)
+            result = inspect_printer(endpoint, printer_id)
         except Exception:
             result = {'status':'failed','can_save':False,'error':'设备检测失败，请检查网络及本机配置文件后重试'}
         with self._lock:
@@ -154,24 +178,67 @@ class ProbeRegistry:
                 self._records[probe_id]['expires'] = time.monotonic()+PROBE_TTL
             self._active = False
 
+    def _get_record(self, probe_id):
+        if not isinstance(probe_id, str) or not re.fullmatch(r'[0-9a-f]{32}', probe_id):
+            raise RegistrationError('检测任务标识无效，请重新检测设备')
+        self._prune()
+        record = self._records.get(probe_id)
+        if record is None:
+            raise RegistrationError('检测结果已过期或不存在，请重新检测设备', 410)
+        return record
+
     def get(self, probe_id):
         with self._lock:
-            self._prune()
-            record = self._records.get(probe_id)
-            if record is None:
-                raise RegistrationError('检测结果已过期或不存在，请重新检测设备', 410)
-            return {'probe_id':probe_id, **record['result'], 'endpoint':dict(record['endpoint'])}
+            record = self._get_record(probe_id)
+            return {'probe_id':probe_id, **record['result'], 'endpoint':dict(record['endpoint']),
+                    'printer_id':record['printer_id']}
 
     def save(self, data):
-        if not isinstance(data.get('probe_id'), str) or not re.fullmatch(r'[0-9a-f]{32}', data['probe_id']):
-            raise RegistrationError('检测任务标识无效，请重新检测设备')
         with self._lock:
-            self._prune()
-            record = self._records.get(data.get('probe_id'))
-            if record is None:
-                raise RegistrationError('检测结果已过期或不存在，请重新检测设备', 410)
+            record = self._get_record(data.get('probe_id'))
+            if record['printer_id'] is not None:
+                raise RegistrationError('编辑检测只能用于保存该设备的修改', 409)
             if record.get('saved'):
                 return dict(record['saved']), False
             printer = save_inspected_printer(record['endpoint'], record['result'], data.get('name'), data.get('location', ''))
             record['saved'] = printer
             return dict(printer), True
+
+    def update(self, printer_id, data, scheduler):
+        if 'ip' in data:
+            raise RegistrationError('编辑设备时不能提供 IP')
+        if data.keys() - {'version', 'name', 'location', 'ipp_port', 'ipp_path', 'probe_id'}:
+            raise RegistrationError('含有不支持的设备配置字段')
+        current = printer_for_edit(printer_id)
+        version = data.get('version')
+        if version != current['version']:
+            raise RegistrationError('设备配置已变化，请重新打开编辑并确认', 409)
+        changes = {}
+        for field, label, limit in (('name', '设备名称', 80), ('location', '位置', 120)):
+            if field in data:
+                changes[field] = clean_text(data[field], label, limit, required=field == 'name')
+        try:
+            if 'ipp_port' not in data and 'ipp_path' not in data and 'probe_id' not in data:
+                return update_printer(printer_id, version, changes)
+            endpoint = validate_endpoint({**current, **data})
+            if printer_endpoint(endpoint) == printer_endpoint(current) and 'probe_id' not in data:
+                return update_printer(printer_id, version, changes)
+            with self._lock:
+                record = self._get_record(data.get('probe_id'))
+                if record['printer_id'] != printer_id or record['endpoint'] != endpoint:
+                    raise RegistrationError('此检测结果与当前设备及连接配置不匹配，请重新检测', 409)
+                result = record['result']
+                if result.get('status') != 'succeeded' or not result.get('compatible') or not result.get('can_save'):
+                    raise RegistrationError(result.get('error') or '请先完成设备检测', 409)
+            if printer_endpoint(endpoint) == printer_endpoint(current):
+                return update_printer(printer_id, version, changes)
+            changes.update(ipp_port=endpoint['ipp_port'], ipp_path=endpoint['ipp_path'],
+                           model=clean_text(result['model'], '型号', 120),
+                           color_supported=result['color_supported'], duplex_supported=result['duplex_supported'],
+                           default_duplex=result['default_duplex'])
+            with scheduler.transaction() as db:
+                if scheduler.has_active_jobs(db, printer_id):
+                    raise RegistrationError('该设备有待处理或待确认的任务，请先处理队列再修改连接配置', 409)
+                return update_printer(printer_id, version, changes)
+        except PrinterEditConflict as exc:
+            raise RegistrationError(str(exc), 409) from exc

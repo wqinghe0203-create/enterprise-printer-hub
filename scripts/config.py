@@ -5,6 +5,7 @@
 """
 import os
 import json
+import hashlib
 import tempfile
 import threading
 import time
@@ -155,6 +156,41 @@ def save_config(cfg: Dict[str, Any]):
 
 def printer_endpoint(printer):
     return (printer.get('ip'), int(printer.get('ipp_port', 631)), printer.get('ipp_path', '/ipp/print'))
+
+
+def printer_connection_version(printer):
+    return hashlib.sha256(json.dumps(printer_endpoint(printer)).encode('utf-8')).hexdigest()
+
+
+def editable_printer(printer):
+    ip, port, path = printer_endpoint(printer)
+    fields = {'id': printer['id'], 'name': printer.get('name') or '', 'location': printer.get('location') or '',
+              'ip': ip, 'ipp_port': port, 'ipp_path': path}
+    return {**fields, 'version': hashlib.sha256(json.dumps(fields).encode('utf-8')).hexdigest()}
+
+
+class PrinterEditConflict(ValueError):
+    pass
+
+
+def update_printer(printer_id, version, changes):
+    with config_lock():
+        cfg = load_config_strict()
+        existing = next((printer for printer in cfg['printers'] if printer['id'] == printer_id), None)
+        if existing is None or editable_printer(existing)['version'] != version:
+            raise PrinterEditConflict('设备配置已变化，请重新打开编辑并确认')
+        if 'ip' in changes:
+            raise PrinterEditConflict('编辑设备时不能修改 IP')
+        updated = {**existing, **changes}
+        endpoint = printer_endpoint(updated)
+        if endpoint != printer_endpoint(existing) and any(
+            printer['id'] != printer_id and printer_endpoint(printer) == endpoint for printer in cfg['printers']
+        ):
+            raise PrinterEditConflict('该地址、端口和路径已被其他设备使用')
+        if updated != existing:
+            existing.update(changes)
+            _save_config_locked(cfg)
+        return editable_printer(existing)
 
 
 def create_printer(printer_data):

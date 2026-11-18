@@ -93,12 +93,12 @@ class QueueScheduler:
                 pages=1, duplex='duplex_long', color_mode='auto', copies=1,
                 request_id=None, needs_conversion=False):
         pid = printer_id or get_default_printer_id()
-        printer = get_printer(pid)
         with self.transaction() as db:
             if request_id:
                 row = db.execute('SELECT body FROM jobs WHERE request_id=?', (request_id,)).fetchone()
                 if row:
                     return self._decode(row[0])
+            printer = get_printer(pid)
             jid = int(db.execute("SELECT value FROM meta WHERE key='next_id'").fetchone()[0])
             job = dict(id=jid, filename=filename or os.path.basename(filepath), filepath=os.path.abspath(filepath),
                        user=user or '未知用户', printer_id=pid, printer_name=printer.get('name', '打印机'),
@@ -128,6 +128,9 @@ class QueueScheduler:
             return active
         finished = sorted((j for j in jobs if j['status'] in TERMINAL), key=lambda j: (j.get('updated_at', ''), j['id']), reverse=True)
         return (active + finished)[:limit] if limit is not None else active + finished
+
+    def has_active_jobs(self, db, printer_id):
+        return any(job['printer_id'] == printer_id and job['status'] in ACTIVE for job in self._all(db))
 
     def history(self, printer_id=None, page=1, size=5, search='', user='', status='', start='', end=''):
         jobs = [j for j in self.get_jobs(printer_id, True, None) if j['status'] in TERMINAL]

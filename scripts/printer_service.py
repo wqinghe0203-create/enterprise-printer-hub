@@ -12,7 +12,10 @@ import time
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
-from .config import BASE_DIR, get_printers, get_printer, get_default_printer_id, get_converter_config
+from .config import (
+    BASE_DIR, get_printers, get_printer, get_default_printer_id, get_converter_config,
+    printer_connection_version, printer_endpoint,
+)
 from .ipp_core import IPPClient
 from .queue_scheduler import QueueScheduler
 from .doc_converter import prepare_printable_file
@@ -46,7 +49,7 @@ class PrinterService:
             cluster_info.append({
                 "id": pid,
                 "name": p.get("name", "打印机"),
-                "location": p.get("location", "未指定位置"),
+                "location": p.get("location") or "",
                 "model": p.get("model", ""),
                 "ip": p.get("ip", ""),
                 "gateway": p.get("gateway", ""),
@@ -123,6 +126,7 @@ class PrinterService:
                 "model": p_cfg.get("model", "Network Printer"),
                 "ip": p_cfg.get("ip", ""),
                 "gateway": p_cfg.get("gateway", ""),
+                "connection_version": printer_connection_version(p_cfg),
                 "online": hw_status.get("online", False),
                 "state_code": hw_status.get("state_code", 3 if hw_status.get("online") else 0),
                 "state_desc": hw_status.get("state_desc", "未知"),
@@ -238,7 +242,6 @@ class PrinterService:
     def _dispatch_claimed(self, printer_id: Optional[str] = None) -> Dict[str, Any]:
         """调度并发送指定打印机最高优先级的任务"""
         target_pid = printer_id or get_default_printer_id()
-        p_cfg = get_printer(target_pid)
         top_job = self.scheduler.claim_next_job(target_pid)
 
         if not top_job:
@@ -252,6 +255,7 @@ class PrinterService:
         trace = {'stage': 'conversion' if top_job.get('needs_conversion') else 'capabilities'}
         stage_start = time.monotonic()
         try:
+            p_cfg = get_printer(target_pid)
             if top_job.get('needs_conversion'):
                 filepath, pages = prepare_printable_file(filepath)
                 trace['conversion_seconds'] = round(time.monotonic() - stage_start, 3)
@@ -288,10 +292,17 @@ class PrinterService:
             return {'dispatched': False, 'job_id': job_id, 'error': str(exc)}
 
     def sync_hardware_jobs(self, printer_id: str, client=None):
-        client = client or self.get_ipp_client(printer_id)
-        for job in self.scheduler.get_jobs(printer_id=printer_id):
-            if job.get('dispatch_active') or job.get('status') not in ('submitted', 'printing', 'unknown') or not job.get('hardware_job_id'):
-                continue
+        jobs = [job for job in self.scheduler.get_jobs(printer_id=printer_id)
+                if not job.get('dispatch_active') and job['status'] in ('submitted', 'printing', 'unknown')
+                and job.get('hardware_job_id')]
+        if not jobs:
+            return
+        config = get_printer(printer_id)
+        if client is None:
+            client = IPPClient(printer_cfg=config)
+        elif (client.ip, int(client.port), client.path) != printer_endpoint(config):
+            return
+        for job in jobs:
             result = client.get_job(job['hardware_job_id'])
             if not result.get('success'):
                 # Offline/expired job: retain pending state, never infer completion.
@@ -423,11 +434,16 @@ class PrinterService:
     def emergency_cut_in(self, job_id: int) -> Dict[str, Any]:
         return self.scheduler.cut_in_line(job_id)
 
-    def cancel_job(self, job_id: int, printer_id: Optional[str] = None, is_hardware: bool = False) -> Dict[str, Any]:
+    def cancel_job(self, job_id: int, printer_id: Optional[str] = None, is_hardware: bool = False,
+                   connection_version: Optional[str] = None) -> Dict[str, Any]:
         if is_hardware:
             if not printer_id:
                 return {'success': False, 'error': '取消设备作业时请指定对应的打印机'}
-            return self.get_ipp_client(printer_id).cancel_job(job_id)
+            config = get_printer(self.resolve_printer_by_keyword(printer_id))
+            if connection_version is not None and connection_version != printer_connection_version(config):
+                return {'success': False, 'code': 'printer_connection_changed',
+                        'error': '设备连接配置已变化，请刷新任务列表后再取消'}
+            return IPPClient(printer_cfg=config).cancel_job(job_id)
         job = self.scheduler.get_job(job_id)
         if not job:
             return {'success': False, 'error': f'找不到本机任务 #{job_id}'}
@@ -439,7 +455,10 @@ class PrinterService:
         if job['status'] in ('unknown', 'sending'):
             return {'success': False, 'job': job, 'error': '发送结果尚未确认，请先核查设备队列'}
         if job.get('hardware_job_id') and job['status'] in ('submitted', 'printing'):
-            reply = self.get_ipp_client(job['printer_id']).cancel_job(job['hardware_job_id'])
+            client = self.get_ipp_client(job['printer_id'])
+            if self.scheduler.get_job(job_id) != job:
+                return {'success': False, 'error': '打印任务状态已变化，请刷新后再操作'}
+            reply = client.cancel_job(job['hardware_job_id'])
             if not reply.get('success'):
                 self.sync_hardware_jobs(job['printer_id'])
                 reply['job'] = self.scheduler.get_job(job_id)

@@ -49,7 +49,7 @@ TEMPLATE_PATH = os.path.join(BASE_DIR, "templates", "index.html")
 UPLOAD_DIR = os.path.join(BASE_DIR, "data", "uploads")
 ensure_directory(UPLOAD_DIR)
 
-from scripts.printer_registration import ProbeRegistry, RegistrationError
+from scripts.printer_registration import ProbeRegistry, RegistrationError, printer_for_edit
 
 svc = PrinterService()
 probes = ProbeRegistry()
@@ -138,40 +138,53 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
         # Same-origin GETs usually omit Origin. Reject cross-site browser reads.
         return self.headers.get('Sec-Fetch-Site') in (None, 'same-origin')
 
-    def _registration_request(self, path, mutation=False):
+    def _read_printer_json(self):
+        if self.headers.get_content_type() != 'application/json':
+            raise RegistrationError('请求必须使用 application/json', 415)
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            raise RegistrationError('请求长度无效')
+        if not 0 < length <= 16384:
+            raise RegistrationError('请求内容过大或为空')
+        try:
+            data = json.loads(self.rfile.read(length).decode('utf-8'))
+        except (ValueError, UnicodeError):
+            raise RegistrationError('JSON 格式不正确')
+        if not isinstance(data, dict):
+            raise RegistrationError('请求内容必须为 JSON 对象')
+        return data
+
+    def _registration_request(self, path):
+        mutation = self.command != 'GET'
         if not self._require_api_auth():
             return
         if not self._registration_allowed(mutation):
-            self._send_json({'success':False,'error':'请从允许添加设备的后台地址打开打印设备页面，或使用管理员令牌'}, 403)
+            self._send_json({'success':False,'error':'请从允许管理设备的后台地址打开打印设备页面，或使用管理员令牌'}, 403)
             return
         try:
-            if mutation:
-                if self.headers.get_content_type() != 'application/json':
-                    raise RegistrationError('请求必须使用 application/json', 415)
-                try:
-                    length = int(self.headers.get('Content-Length', '0'))
-                except ValueError:
-                    raise RegistrationError('请求长度无效')
-                if not 0 < length <= 16384:
-                    raise RegistrationError('请求内容过大或为空')
-                try:
-                    data = json.loads(self.rfile.read(length).decode('utf-8'))
-                except (ValueError, UnicodeError):
-                    raise RegistrationError('JSON 格式不正确')
-                if not isinstance(data, dict):
-                    raise RegistrationError('请求内容必须为 JSON 对象')
-                if path == '/api/printer-probes':
-                    self._send_json({'success':True, **probes.start(data)}, 202)
+            if path.startswith('/api/printers/'):
+                encoded_id = path[len('/api/printers/'):]
+                if not encoded_id or '/' in encoded_id:
+                    raise RegistrationError('未找到指定打印机', 404)
+                printer_id = urllib.parse.unquote(encoded_id)
+                if mutation:
+                    printer = probes.update(printer_id, self._read_printer_json(), svc.scheduler)
                 else:
-                    printer, created = probes.save(data)
-                    self._send_json({'success':True,'printer':printer,'created':created}, 201 if created else 200)
+                    printer = printer_for_edit(printer_id)
+                self._send_json({'success':True, 'printer':printer})
+            elif path == '/api/printer-probes':
+                self._send_json({'success':True, **probes.start(self._read_printer_json())}, 202)
+            elif path == '/api/printers':
+                printer, created = probes.save(self._read_printer_json())
+                self._send_json({'success':True,'printer':printer,'created':created}, 201 if created else 200)
             else:
                 result = probes.get(path.rsplit('/', 1)[-1])
                 self._send_json({'success':True, **result})
         except RegistrationError as exc:
             self._send_json({'success':False,'error':str(exc)}, exc.status)
-        except (OSError, ValueError):
-            self._send_json({'success':False,'error':'配置保存失败，原配置未替换；请检查 config.json 及目录权限后重试'}, 500)
+        except (OSError, ValueError, sqlite3.Error):
+            self._send_json({'success':False,'error':'无法处理设备配置，请检查 config.json、任务队列及目录权限'}, 500)
 
     def do_GET(self):
         try:
@@ -185,12 +198,19 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
         except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
             self._send_json({'success': False, 'error': str(exc)}, 400 if isinstance(exc, ValueError) else 500)
 
+    def do_PATCH(self):
+        path = urllib.parse.urlsplit(self.path).path
+        if path.startswith('/api/printers/'):
+            self._registration_request(path)
+        else:
+            self.send_error(404, 'Endpoint Not Found')
+
     def _get(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        if path.startswith('/api/printer-probes/'):
+        if path.startswith(('/api/printer-probes/', '/api/printers/')):
             self._registration_request(path)
         elif path == READY_PATH:
             if not ipaddress.ip_address(self.client_address[0]).is_loopback:
@@ -282,7 +302,7 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({'enabled': True, **mac_office_check.start_check(force=True, background=True)})
         elif path in ('/api/printer-probes', '/api/printers'):
-            self._registration_request(path, mutation=True)
+            self._registration_request(path)
         elif path == '/api/default-printer':
             if not self._management_allowed(mutation=True):
                 self._send_json({'success': False, 'error': '请在服务电脑打开本机控制台，或提供管理员令牌后设置默认打印机'}, 403)
@@ -310,8 +330,9 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
             job_id = int(query.get("job_id", [0])[0])
             is_hw = (query.get("is_hw", ["false"])[0].lower() == "true")
             pid = query.get("printer_id", [None])[0]
-            res = svc.cancel_job(job_id, printer_id=pid, is_hardware=is_hw)
-            self._send_json(res)
+            res = svc.cancel_job(job_id, printer_id=pid, is_hardware=is_hw,
+                                 connection_version=query.get('connection_version', [None])[0])
+            self._send_json(res, 409 if res.get('code') == 'printer_connection_changed' else 200)
 
         elif path == "/api/upload_print":
             if not self._require_api_auth():
