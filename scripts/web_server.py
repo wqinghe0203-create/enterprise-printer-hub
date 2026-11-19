@@ -184,7 +184,7 @@ class PrinterWebHandler(BaseHTTPRequestHandler):
         except RegistrationError as exc:
             self._send_json({'success':False,'error':str(exc)}, exc.status)
         except (OSError, ValueError, sqlite3.Error):
-            self._send_json({'success':False,'error':'无法处理设备配置，请检查 config.json、任务队列及目录权限'}, 500)
+            self._send_json({'success':False,'error':'无法处理设备配置，请检查 data/printers.sqlite3、任务队列及目录权限；首次升级请检查原 config.json'}, 500)
 
     def do_GET(self):
         try:

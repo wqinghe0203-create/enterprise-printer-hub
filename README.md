@@ -116,9 +116,9 @@ powershell.exe -NoProfile -File .\scripts\bootstrap-windows.ps1
 
 WorkBuddy 可运行 `scripts/cli.py add-printer --ip 10.1.36.229` 检测；明确新增时加 `--save --name "研发区打印机" --location "26F"`，支持 `--ipp-port`、`--ipp-path`。检测与保存共用同一逻辑，禁止默认测试出纸。
 
-保存会锁定配置文件，先备份 `config.json.bak`，再通过同目录临时文件原子替换；配置损坏、重名 ID、重复地址或写入失败不会覆盖原设备。恢复时先停止服务，保留当前配置副本，再用已核对的备份恢复。
+设备及全局默认打印机保存在 `data/printers.sqlite3`。添加、编辑和设置默认设备均使用 SQLite 事务，重名 ID、重复端点或写入失败会回滚。首次使用时自动导入服务器原 `config.json`，保留设备 ID、扩展字段和默认设备，并将迁移原件备份为 `data/printers.config.pre-sqlite.json`。已有数据库启动时直接读取设备记录，覆盖代码或修改 JSON 不会重新初始化设备。
 
-**升级保留数据**：覆盖更新代码前备份原目录，保留原有 `config.json`、`data/` 和机器自身环境；不要把发行包的初始配置、空队列覆盖到正在使用的安装目录。
+**发版操作**：双击 `发布打包.bat`，或运行 `python tools/build_skill_package.py`。将 `dist/enterprise-printer-hub-0.0.1-import.zip` 覆盖解压到服务器程序目录。发布包排除整个 `data/`、数据库及侧文件、运行中的 `config.json` 和本机环境，只附带 `config.example.json` 供首次安装初始化。升级前停止服务并备份服务器原 `config.json` 和整个 `data/`，覆盖解压后重新启动。保留服务器原目录及数据，使用系统压缩功能直接压整个开发目录会绕过这些排除规则。
 
 ## 网页布局与分页
 
@@ -138,7 +138,7 @@ WorkBuddy 可运行 `scripts/cli.py add-printer --ip 10.1.36.229` 检测；明�
 
 ## 配置与手动运行
 
-修改 `config.json` 的 `printers` 数组可添加设备；`system.default_printer_id` 指定默认设备。设备需要实际支持所配置的 IPP 地址与端口。
+通过网页或 CLI 添加设备、编辑连接配置和设置全局默认设备，数据保存到 `data/printers.sqlite3`。`config.json` 继续提供服务端口、转换器等静态设置。设备数据库首次创建时优先导入原 `config.json`，首次安装缺少该文件时使用包内 `config.example.json`。迁移完成后 JSON 中的设备数组和默认设备只作为历史初始化数据。
 
 Windows 在项目目录执行：
 
@@ -201,7 +201,7 @@ PWG Raster 格式实现依据 [CUPS Raster 规范](https://openprinting.github.i
 ### 升级与回退
 
 1. 停止本安装目录全部网页和 CLI 进程，备份 `config.json` 及整个 `data/`，再覆盖代码。不要覆盖或清空已有数据目录。
-2. 首次启动事务迁移旧 `queue_state.json`，保留原文件，并备份为 `queue_state.json.pre-sqlite.bak`；保留编号、设置及硬件关联。迁移失败停止并提示，不自动创建空队列替换旧记录。迁移成功后 JSON 不再更新。
+2. 首次启动将服务器原 `config.json` 中的设备与默认设备事务迁入 `data/printers.sqlite3`，保留迁移原件。设备数据库已初始化时跳过导入。另事务迁移旧 `queue_state.json`，保留原文件，并备份为 `queue_state.json.pre-sqlite.bak`。保留编号、设置及硬件关联。迁移失败停止并提示，不自动创建空队列替换旧记录。迁移成功后 JSON 不再更新。
 3. 恢复数据库使用停机后的完整 data 备份；不要复制正在使用的单个数据库文件。SQLite 损坏时停止服务、备份现场再人工恢复，不能删除数据库并把过期 JSON 当作最新数据。
 4. 回退旧代码需停机并恢复升级前完整备份；旧版不识别 SQLite，新版新增任务不会自动回写 JSON。请保留新版完整副本供核查，避免重复投递仍在打印机上的任务。
 
@@ -223,7 +223,7 @@ PWG Raster 格式实现依据 [CUPS Raster 规范](https://openprinting.github.i
 
 ## 正式导入包
 
-使用 `python tools/build_skill_package.py` 构建 `dist/enterprise-printer-hub-0.0.1-import.zip`。构建包含运行必需文件与说明，排除历史 EXE、`.venv`、`.git`、缓存、测试和用户数据。用户导入后，首次调用在本机配置依赖。
+双击 `发布打包.bat` 或使用 `python tools/build_skill_package.py` 构建 `dist/enterprise-printer-hub-0.0.1-import.zip`。构建按文件白名单收集程序与说明，排除整个 `data/`、SQLite 及侧文件、`config.json`、历史 EXE、`.venv`、`.git`、缓存和测试。包内提供 `config.example.json` 供首次安装使用，另生成 SHA-256 清单。用户导入后，首次调用在本机配置依赖。
 
 已有用户务必先将配置和整个 data 目录备份到技能目录以外，避免客户端同名导入覆盖旧数据。具体步骤见 [导入安装说明](导入安装说明.md)。干净包仅修正交付冗余，不等于已经通过 WorkBuddy 安全检测；若检测服务仍返回异常，需由客户端 / 服务侧继续排查。本次未修改运行功能或安全检测设置。
 

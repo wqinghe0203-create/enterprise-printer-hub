@@ -4,6 +4,14 @@
 # 运行时数据：上传的文档、转换产物、队列状态
 data/
 
+# SQLite files are server data and must stay out of source and release packages.
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+
 # 运行时垃圾
 config.json.bak
 config.json.lock

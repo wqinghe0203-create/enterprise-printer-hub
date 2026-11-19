@@ -7,14 +7,16 @@ import os
 import json
 import hashlib
 import tempfile
-import threading
-import time
+import sqlite3
 from pathlib import Path
 from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 
+from .runtime_paths import ensure_directory
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+PRINTER_DB_PATH = os.path.join(BASE_DIR, "data", "printers.sqlite3")
 
 DEFAULT_CONFIG = {
     "system": {
@@ -60,72 +62,87 @@ DEFAULT_CONFIG = {
 }
 
 
+def _config_source():
+    path = Path(CONFIG_PATH)
+    if path.exists():
+        return path
+    return path.with_name("config.example.json")
+
+
 def load_config() -> Dict[str, Any]:
-    if os.path.exists(CONFIG_PATH):
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return DEFAULT_CONFIG
+    try:
+        return json.loads(_config_source().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return DEFAULT_CONFIG
 
 
-_write_lock = threading.RLock()
+def _validate_printer_config(cfg, migrate_single_default=False):
+    if not isinstance(cfg, dict) or not isinstance(cfg.get('printers'), list) or not isinstance(cfg.get('system'), dict):
+        raise ValueError('设备配置结构不完整')
+    ids = [printer.get('id') for printer in cfg['printers'] if isinstance(printer, dict)]
+    if len(ids) != len(cfg['printers']) or not all(isinstance(pid, str) and pid for pid in ids) or len(ids) != len(set(ids)):
+        raise ValueError('设备标识无效或重复')
+    if cfg['system'].get('default_printer_id') not in ids:
+        if migrate_single_default and len(ids) == 1:
+            cfg['system']['default_printer_id'] = ids[0]
+        else:
+            raise ValueError('默认打印机配置无效；请重新选择默认设备')
+    endpoints = [printer_endpoint(printer) for printer in cfg['printers']]
+    if any(not isinstance(ip, str) or not ip or not 1 <= port <= 65535 or not isinstance(path, str)
+           for ip, port, path in endpoints):
+        raise ValueError('设备连接配置无效')
+    if len(endpoints) != len(set(endpoints)):
+        raise ValueError('设备地址、端口和路径重复')
 
 
 @contextmanager
-def config_lock():
-    """Serialize read-modify-write across threads and Windows/macOS processes."""
-    with _write_lock:
-        with open(CONFIG_PATH + '.lock', 'a+b') as lock:
-            lock.seek(0, os.SEEK_END)
-            if lock.tell() == 0:
-                lock.write(b'0')
-                lock.flush()
-            deadline = time.monotonic() + 3
-            acquired = False
+def _printer_transaction():
+    ensure_directory(Path(PRINTER_DB_PATH).parent)
+    db = sqlite3.connect(PRINTER_DB_PATH, timeout=30)
+    try:
+        db.execute('PRAGMA synchronous=FULL')
+        db.execute('BEGIN IMMEDIATE')
+        db.execute('CREATE TABLE IF NOT EXISTS printers ('
+                   'id TEXT PRIMARY KEY, ip TEXT NOT NULL, ipp_port INTEGER NOT NULL, '
+                   'ipp_path TEXT NOT NULL, body TEXT NOT NULL, UNIQUE(ip, ipp_port, ipp_path))')
+        db.execute('CREATE TABLE IF NOT EXISTS printer_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+        if not db.execute("SELECT 1 FROM printer_settings WHERE key='initialized'").fetchone():
+            source = _config_source()
             try:
-                while not acquired:
-                    lock.seek(0)
-                    try:
-                        if os.name == 'nt':
-                            import msvcrt
-                            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
-                        else:
-                            import fcntl
-                            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        acquired = True
-                    except OSError:
-                        if time.monotonic() >= deadline:
-                            raise ValueError('配置正在被其他进程修改，请稍后重试')
-                        time.sleep(0.05)
-                yield
-            finally:
-                if acquired:
-                    lock.seek(0)
-                    if os.name == 'nt':
-                        import msvcrt
-                        msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
-                    else:
-                        import fcntl
-                        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+                raw = source.read_bytes()
+                cfg = json.loads(raw)
+                _validate_printer_config(cfg, migrate_single_default=True)
+            except (OSError, ValueError, TypeError) as exc:
+                raise ValueError('打印机首次迁移失败，请检查原 config.json 或 config.example.json；原配置已保留') from exc
+            backup = Path(PRINTER_DB_PATH).with_name('printers.config.pre-sqlite.json')
+            if backup.exists() and backup.read_bytes() != raw:
+                raise ValueError('设备迁移备份与当前配置不一致，请核查后重试')
+            if not backup.exists():
+                _atomic_write(backup, raw)
+            _save_printers(db, cfg)
+            db.execute("INSERT INTO printer_settings VALUES ('initialized', '1')")
+        yield db
+        db.commit()
+    except BaseException:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def _printer_config(db):
+    cfg = load_config()
+    printers = [json.loads(row[0]) for row in db.execute('SELECT body FROM printers ORDER BY rowid')]
+    default = db.execute("SELECT value FROM printer_settings WHERE key='default_printer_id'").fetchone()
+    result = {**cfg, 'printers': printers, 'system': {**cfg.get('system', {}), 'default_printer_id': default[0] if default else None}}
+    _validate_printer_config(result)
+    return result
 
 
 def load_config_strict():
-    """Validate configuration before selecting a device or saving changes."""
-    try:
-        with open(CONFIG_PATH, encoding='utf-8') as file:
-            cfg = json.load(file)
-    except (OSError, ValueError) as exc:
-        raise ValueError('配置文件无法读取或已损坏；请检查 config.json') from exc
-    if not isinstance(cfg, dict) or not isinstance(cfg.get('printers'), list) or not isinstance(cfg.get('system'), dict):
-        raise ValueError('配置结构不完整；请检查 config.json')
-    ids = [printer.get('id') for printer in cfg['printers'] if isinstance(printer, dict)]
-    if len(ids) != len(cfg['printers']) or not all(isinstance(pid, str) and pid for pid in ids) or len(ids) != len(set(ids)):
-        raise ValueError('配置中的设备标识无效或重复；请检查 config.json')
-    if cfg['system'].get('default_printer_id') not in ids:
-        raise ValueError('默认打印机配置无效；请重新选择默认设备')
-    return cfg
+    """Read the server's device catalog. Legacy JSON is imported only once."""
+    with _printer_transaction() as db:
+        return _printer_config(db)
 
 
 def _atomic_write(path, content):
@@ -142,16 +159,24 @@ def _atomic_write(path, content):
             os.unlink(temporary)
 
 
-def _save_config_locked(cfg):
-    original = Path(CONFIG_PATH).read_bytes()
-    _atomic_write(CONFIG_PATH + '.bak', original)
-    _atomic_write(CONFIG_PATH, (json.dumps(cfg, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
+def _save_printers(db, cfg):
+    _validate_printer_config(cfg)
+    db.execute('DELETE FROM printers')
+    for printer in cfg['printers']:
+        ip, port, path = printer_endpoint(printer)
+        db.execute('INSERT INTO printers VALUES (?, ?, ?, ?, ?)',
+                   (printer['id'], ip, port, path, json.dumps(printer, ensure_ascii=False)))
+    db.execute("INSERT OR REPLACE INTO printer_settings VALUES ('default_printer_id', ?)",
+               (cfg['system']['default_printer_id'],))
 
 
 def save_config(cfg: Dict[str, Any]):
-    with config_lock():
-        load_config_strict()
-        _save_config_locked(cfg)
+    """Compatibility entry point for explicitly saving a complete configuration."""
+    with _printer_transaction() as db:
+        _save_printers(db, cfg)
+        if Path(CONFIG_PATH).exists():
+            _atomic_write(CONFIG_PATH + '.bak', Path(CONFIG_PATH).read_bytes())
+        _atomic_write(CONFIG_PATH, (json.dumps(cfg, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
 
 
 def printer_endpoint(printer):
@@ -174,8 +199,8 @@ class PrinterEditConflict(ValueError):
 
 
 def update_printer(printer_id, version, changes):
-    with config_lock():
-        cfg = load_config_strict()
+    with _printer_transaction() as db:
+        cfg = _printer_config(db)
         existing = next((printer for printer in cfg['printers'] if printer['id'] == printer_id), None)
         if existing is None or editable_printer(existing)['version'] != version:
             raise PrinterEditConflict('设备配置已变化，请重新打开编辑并确认')
@@ -189,20 +214,20 @@ def update_printer(printer_id, version, changes):
             raise PrinterEditConflict('该地址、端口和路径已被其他设备使用')
         if updated != existing:
             existing.update(changes)
-            _save_config_locked(cfg)
+            _save_printers(db, cfg)
         return editable_printer(existing)
 
 
 def create_printer(printer_data):
     """Create only: existing IDs/endpoints must never be silently updated."""
-    with config_lock():
-        cfg = load_config_strict()
+    with _printer_transaction() as db:
+        cfg = _printer_config(db)
         if any(printer_endpoint(printer) == printer_endpoint(printer_data) for printer in cfg['printers']):
             raise ValueError('该地址、端口和路径的打印机已存在，请使用现有设备')
         if any(printer['id'] == printer_data['id'] for printer in cfg['printers']):
             raise ValueError('设备标识已存在，未保存')
         cfg['printers'].append(dict(printer_data))
-        _save_config_locked(cfg)
+        _save_printers(db, cfg)
     return dict(printer_data)
 
 
@@ -216,15 +241,15 @@ def get_default_printer_id() -> str:
 
 
 def set_default_printer(printer_id: str) -> Dict[str, Any]:
-    """Save an existing device as the default without overwriting concurrent edits."""
-    with config_lock():
-        cfg = load_config_strict()
+    """Save the default device in the same transaction as the catalog read."""
+    with _printer_transaction() as db:
+        cfg = _printer_config(db)
         printer = next((p for p in cfg['printers'] if p['id'] == printer_id), None)
         if printer is None:
             raise ValueError('未找到指定打印机，请选择已配置的设备')
         if cfg['system']['default_printer_id'] != printer_id:
             cfg['system']['default_printer_id'] = printer_id
-            _save_config_locked(cfg)
+            _save_printers(db, cfg)
         return printer
 
 
@@ -239,17 +264,17 @@ def get_printer(printer_id: Optional[str] = None) -> Dict[str, Any]:
 
 
 def add_or_update_printer(printer_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Legacy API retained, with locked atomic writes; new UI uses create_printer."""
+    """Legacy API retained with transactional writes; new UI uses create_printer."""
     if not printer_data.get('id'):
         raise ValueError('打印机必须包含唯一 id')
-    with config_lock():
-        cfg = load_config_strict()
+    with _printer_transaction() as db:
+        cfg = _printer_config(db)
         existing = next((printer for printer in cfg['printers'] if printer['id'] == printer_data['id']), None)
         if existing is None:
             cfg['printers'].append(dict(printer_data))
         else:
             existing.update(printer_data)
-        _save_config_locked(cfg)
+        _save_printers(db, cfg)
     return printer_data
 
 

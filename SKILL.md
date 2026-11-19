@@ -1,6 +1,6 @@
 ---
 name: enterprise-printer-hub
-description: 企业多打印机状态查询、实时作业查看、文件打印和任务调度技能。用于“添加打印机”“接入网络打印机”“谁在打印”“打印机列表”“查看27楼队列”“打印这份文件”“紧急插队”“取消打印”“打开打印后台”“LibreOffice 安装好了吗”及打印机网络诊断。通过本技能自带 Python CLI 和网页工作台操作 config.json 中的设备。
+description: 企业多打印机状态查询、实时作业查看、文件打印和任务调度技能。用于“添加打印机”“接入网络打印机”“谁在打印”“打印机列表”“查看27楼队列”“打印这份文件”“紧急插队”“取消打印”“打开打印后台”“LibreOffice 安装好了吗”及打印机网络诊断。通过本技能自带 Python CLI 和网页工作台操作 SQLite 中的设备。
 metadata:
   version: "0.0.1"
 ---
@@ -134,7 +134,7 @@ macOS / Linux 使用技能目录的 `.venv/bin/python` 或有效的 `python3`，
 
 ## 设备和队列
 
-`config.json` 的 `printers` 是实际设备池，`system.default_printer_id` 决定默认设备。交付包保留总部佳能配置 `10.1.36.228`，同事须在能访问该设备的公司网络中使用，或修改配置接入自己的设备；配置不代表设备当前在线。
+`data/printers.sqlite3` 保存实际设备池与全局默认设备。首次启动从服务器原 `config.json` 导入，已有设备数据库启动时直接读取数据库。首次安装使用包内 `config.example.json` 的设备种子，接入其他设备通过网页或 CLI 完成。配置不代表设备当前在线。
 
 - 查询命令只读，不启动网页服务也可使用。
 - 每次打印优先依据用户明确指定的位置、型号或设备 ID。未指定时使用默认设备。
@@ -157,7 +157,7 @@ macOS / Linux 使用技能目录的 `.venv/bin/python` 或有效的 `python3`，
 - 只接入与当前 PDF / PWG Raster 链路兼容的网络设备，不扫描局域网，不接入 USB 或系统驱动队列。
 - 拒绝本机、公网、组播和非法地址；检测不跟随重定向。离线或格式不兼容时保留错误，不保存。
 - 同一地址、端口、路径不能重复新增；设备 ID 由服务生成。新增不会更改默认设备、已选打印机、上传文件或历史任务。
-- 配置使用 Windows / Mac 跨进程锁、原子替换和 config.json.bak 备份；损坏或写入失败时停止，不拿默认值覆盖原配置。更新技能时保留本机 config.json 和 data，不用发行包空队列覆盖已有记录。
+- 设备写入使用 SQLite 事务，损坏或写入失败时停止。首次迁移原件保存在 data/printers.config.pre-sqlite.json。发布使用 tools/build_skill_package.py，压缩包排除整个 data、数据库及侧文件和 config.json，包内 config.example.json 供首次安装使用。升级时保留服务器原 config.json 和 data。
 - Web 添加接口仅允许本机 localhost / 127.0.0.1 同源请求；局域网访客需到服务电脑添加，既有局域网打印仍可使用。
 - 网页可选择打印机默认、单面、长边双面或短边双面；默认选项读取设备实时 sides-default，缺失时使用单面。CLI 保留原有默认长边双面，用户可传 `--duplex auto` 使用设备默认设置。实际提交仍执行格式协商与 Validate-Job，不承诺接入即代表已实际出纸。
 
@@ -230,7 +230,7 @@ WorkBuddy 收到打开网页工作台的请求时，使用本说明开头的平�
 
 ## 历史研发数据格式说明（原 v2.7.0）
 
-升级前停止本目录所有网页服务和 CLI，备份整个 `data/` 与 `config.json`。首次运行将旧 `data/queue_state.json` 迁移到 `data/queue_state.sqlite3`，原 JSON 保持不变，另保存 `.pre-sqlite.bak`；迁移在事务内进行，失败会报错，不启用空队列。迁移成功后 JSON 不再更新。不要在仍有旧版进程运行时升级。
+升级前停止本目录所有网页服务和 CLI，备份整个 `data/` 与 `config.json`。首次运行将原设备配置迁入 `data/printers.sqlite3`，保留设备 ID 和默认设备，后续启动跳过导入。另将旧 `data/queue_state.json` 迁移到 `data/queue_state.sqlite3`，原 JSON 保持不变，另保存 `.pre-sqlite.bak`。迁移在事务内进行，失败会报错，不启用空队列。迁移成功后 JSON 不再更新。不要在仍有旧版进程运行时升级。
 
 进程中断遗留的处理任务在下次取得设备锁时标记为“结果未知”，不自动重投。只有硬件完成确认才记完成；设备不返回作业身份或日志已过期时保留未确认状态。未知任务在任务队列中核查，不混入已结束历史。
 

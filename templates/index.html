@@ -163,11 +163,18 @@
       .device-row .device-row-tasks { grid-column:1; }
       .device-row-actions { grid-column:2; grid-row:2/4; max-width:156px; }
     }
-    .queue-activity { padding:8px 0 12px; color:var(--text-muted); font-size:12px; }
+    .queue-activity { padding:0 0 12px; color:var(--text-muted); font-size:12px; }
     .queue-activity .active-banner { padding:8px 10px; gap:10px; }
     .queue-activity .user-avatar { width:30px; height:30px; border-radius:7px; }
     .queue-activity .active-doc { margin-bottom:2px; }
+    #queue .card-title { margin-bottom:12px; }
+    #queue.queue-empty { padding:16px 18px; }
+    #queue.queue-empty .card-title { margin-bottom:8px; }
+    .queue-empty-state { display:flex; align-items:center; gap:8px; padding:2px 0; color:var(--text-muted); font-size:12px; }
+    .queue-empty-state::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--text-muted); flex-shrink:0; }
+    .queue-empty-state[data-ready="true"]::before { background:var(--success); }
     .queue-table { table-layout:fixed; }
+    #queue .doc-cell { max-width:none; }
     #queue .data-table td { padding:10px 8px; font-size:12px; overflow-wrap:anywhere; }
     #queue .data-table th { font-size:11px; padding:9px 8px; }
     #queue .doc-name { font-size:12px; }
@@ -176,8 +183,8 @@
     .queue-table th:nth-child(4) { width:clamp(82px,13cqw,156px); }
     .queue-table th:nth-child(5) { width:clamp(52px,8cqw,96px); }
     .queue-table th:nth-child(6) { width:clamp(65px,10cqw,105px); }
-    .queue-table th:nth-child(7) { width:clamp(82px,13cqw,140px); }
-    .queue-table th:nth-child(8) { width:156px; text-align:right; }
+    .queue-table th:nth-child(7) { width:clamp(82px,11cqw,120px); }
+    .queue-table th:nth-child(8) { width:clamp(156px,19cqw,204px); text-align:right; }
     .queue-table td .status-badge,.queue-table td .user-badge,.queue-table td .prio-pill { max-width:100%; white-space:normal; }
     body[data-view="overview"] .queue-table th:nth-child(4),body[data-view="overview"] .queue-table td:nth-child(4) { display:none; }
     body[data-view="new-print"] .page-heading a[href="#new-print"] { display:none; }
@@ -342,7 +349,8 @@
     <div class="device-actions">
       <button type="button" class="btn btn-outline" id="top-set-default-btn" onclick="saveDefaultPrinter(activePrinterId)" hidden>设为默认</button>
       <details id="device-details"><summary class="btn btn-outline">设备详情</summary><div class="device-popover"><strong id="p-name">待选择设备</strong><p>型号：<span id="p-model">—</span></p><p>IP：<span id="p-ip">—</span></p><p>网关：<span id="p-gateway">—</span></p></div></details>
-      <details id="device-more"><summary class="btn btn-outline">更多操作</summary><div class="device-popover"><button class="btn btn-outline" onclick="fetchDashboard()">刷新状态</button><button class="btn btn-outline" onclick="openDiagModal()">网络诊断</button><a id="p-remote-ui" href="#" target="_blank" rel="noopener" class="btn btn-outline" style="display:none">设备控制台 ↗</a></div></details>
+      <details id="device-more"><summary class="btn btn-outline">更多操作</summary><div class="device-popover"><button class="btn btn-outline" onclick="fetchDashboard()">刷新状态</button><button class="btn btn-outline" onclick="openDiagModal()">网络诊断</button>
+      </div></details>
     </div>
   </div>
   <div id="device-selection-status" class="selection-status" hidden><span id="device-selection-message" role="status"></span><button type="button" class="btn btn-outline btn-sm" id="retry-dashboard" onclick="fetchDashboard()" hidden>重试</button></div>
@@ -376,6 +384,7 @@
           <span id="queue-count-badge" class="badge" style="background:rgba(255,255,255,0.08);" hidden></span>
         </div>
         <div id="active-print-container" class="queue-activity" aria-live="polite" hidden></div>
+        <p id="queue-empty-state" class="queue-empty-state" role="status" hidden>当前设备暂无待办任务</p>
         <div id="queue-data" class="table-responsive">
           <table class="data-table queue-table">
             <thead>
@@ -532,7 +541,12 @@
   let recentPending = null;
   function showListState(id, message, loading=false) {
     const list=document.getElementById(id);
-    const columns=list.dataset.listColumns;
+    const columns=id==='queue-tbody' && currentView==='overview'?7:list.dataset.listColumns;
+    if(id==='queue-tbody') {
+      document.getElementById('queue').classList.remove('queue-empty');
+      document.getElementById('queue-empty-state').hidden=true;
+      document.getElementById('queue-data').hidden=false;
+    }
     const placeholder=loading?`<span class="list-placeholder" aria-hidden="true">${'<span></span>'.repeat(6)}</span>`:'';
     const content=`<span class="list-state" role="status">${escapeHTML(message)}</span>${placeholder}`;
     const markup=columns?`<tr><td colspan="${columns}">${content}</td></tr>`:content;
@@ -1111,7 +1125,6 @@
     for(const id of ['p-name','p-model','p-ip','p-gateway','metric-printing','metric-queued'])document.getElementById(id).textContent='—';
     document.getElementById('p-status-text').textContent=loading?'读取中':'未确认';
     document.getElementById('p-status-badge').className='badge status-muted';
-    document.getElementById('p-remote-ui').style.display='none';
     document.getElementById('printer-alert-box').style.display='none';
     document.getElementById('device-warnings').hidden=true;
     document.getElementById('device-advisories').hidden=true;
@@ -1284,14 +1297,6 @@
       if (alertBox) alertBox.style.display = 'none';
     }
 
-    const rUiBtn = document.getElementById('p-remote-ui');
-    if (p.remote_ui_url) {
-      rUiBtn.style.display = 'inline-flex';
-      rUiBtn.href = p.remote_ui_url;
-    } else {
-      rUiBtn.style.display = 'none';
-    }
-
     // 3. Render Active printing card
     const activeCont = document.getElementById('active-print-container');
     activeCont.hidden=false;
@@ -1329,6 +1334,7 @@
         </div>
       `;
     } else {
+      activeCont.hidden=p.online && !stopped;
       activeCont.textContent = !p.online
         ? '当前设备离线，可查看本机记录或执行网络诊断。'
         : (stopped
@@ -1350,11 +1356,18 @@
     const hwq = queuePage.items.filter(item=>item.type==='hardware').map(item=>item.job);
     if(currentView==='queue' && queuePage.total)pageControls('queue',queuePage);
     const queueCount=document.getElementById('queue-count-badge');
-    queueCount.hidden=false;
+    queueCount.hidden=queuePage.total===0;
     queueCount.textContent=queuePage.total+' 个待办';
+    const emptyQueue=queuePage.total===0;
+    const queueEmptyState=document.getElementById('queue-empty-state');
+    document.getElementById('queue').classList.toggle('queue-empty',emptyQueue);
+    queueEmptyState.hidden=!emptyQueue;
+    queueEmptyState.dataset.ready=String(p.online && !stopped);
+    document.getElementById('queue-data').hidden=emptyQueue;
 
-    if (vq.length === 0 && hwq.length === 0) {
-      showListState('queue-tbody','暂无待办任务。');
+    if (emptyQueue) {
+      qTbody.removeAttribute('aria-busy');
+      qTbody.innerHTML='';
     } else {
       let html = '';
       vq.forEach(j => {
